@@ -1,70 +1,125 @@
-# Getting Started with Create React App
+# Blutdruck-Tracker
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Eine React-Anwendung zur Erfassung und Visualisierung von Blutdruckwerten.
 
-## Available Scripts
+## Projektstruktur
 
-In the project directory, you can run:
+Die Anwendung wurde in folgende Module aufgeteilt:
 
-### `npm start`
+```
+src/
+├── utils/                # Hilfs- und Dienstprogramme
+│   ├── bloodPressureUtils.js  # Blutdruck-spezifische Funktionen
+│   ├── dataUtils.js           # Datenverarbeitung und -transformation
+│   └── validationUtils.js     # Validierungsfunktionen
+├── hooks/                # Custom React Hooks
+│   └── useBloodPressureData.js  # Zentrale Datenverwaltung
+├── components/           # React-Komponenten
+│   ├── Dashboard/        # Dashboard-Komponenten
+│   │   ├── BloodPressureSummary.js      # Zusammenfassung
+│   │   ├── BloodPressureChart.js        # Diagramm
+│   │   └── BloodPressureCategoryLegend.js  # Kategorien-Legende
+│   ├── Table/            # Tabellen-Komponenten
+│   │   └── BloodPressureTable.js        # Daten-Tabelle
+│   ├── Forms/            # Formular-Komponenten
+│   │   ├── AddEntryForm.js              # Formular für neue Einträge
+│   │   ├── EditEntryForm.js             # Formular zum Bearbeiten
+│   │   └── ImportModal.js               # Import-Dialog
+│   └── UI/               # UI-Komponenten
+│       ├── StatusMessage.js             # Statusnachrichten
+│       └── ToggleViewButtons.js         # Ansichtsumschaltung
+└── App.js                # Hauptkomponente
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Komponentenbeschreibungen
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Utils
 
-### `npm test`
+**bloodPressureUtils.js**
+- Enthält Funktionen zur Klassifizierung von Blutdruckwerten in medizinische Kategorien
+- Berechnet Durchschnittswerte und formatiert Tabellenwerte
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+**dataUtils.js**
+- Verarbeitet und transformiert Daten für die Anzeige
+- Enthält Funktionen zum Parsen von CSV-Dateien
+- Bereitet Daten für Diagramme mit gleitenden Durchschnitten und Trendlinien vor
 
-### `npm run build`
+**validationUtils.js**
+- Validierungsfunktionen für Formulareingaben
+- Prüft Blutdruckwerte auf medizinische Plausibilität
+- Konvertiert und formatiert Datumsformate
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Hooks
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+**useBloodPressureData.js**
+- Zentralisiert die Datenverwaltung und -verarbeitung
+- Stellt CRUD-Operationen für Blutdruckeinträge bereit
+- Berechnet abgeleitete Daten wie Durchschnitte und Kategorien
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Komponenten
 
-### `npm run eject`
+#### Dashboard
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+**BloodPressureSummary.js**
+- Zeigt Zusammenfassung der Blutdruckdaten
+- Visualisiert Durchschnittswerte und Kategorien
+- Zeigt Min/Max-Werte und Trends
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+**BloodPressureChart.js**
+- Visualisiert Blutdruckdaten als interaktives Liniendiagramm
+- Unterstützt Morgen- und Abend-Ansichten
+- Zeigt gleitende Durchschnitte und Referenzlinien an
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+**BloodPressureCategoryLegend.js**
+- Erklärt die verschiedenen Blutdruckkategorien
+- Zeigt Farbkodierung und Richtwerte an
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+#### Table
 
-## Learn More
+**BloodPressureTable.js**
+- Tabellarische Ansicht aller Blutdruckeinträge
+- Farbkodierung je nach Blutdruckkategorie
+- Aktionen zum Bearbeiten und Löschen von Einträgen
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+#### Forms
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+**AddEntryForm.js**
+- Formular zum Hinzufügen neuer Blutdruckeinträge
+- Validiert Eingaben auf medizinische Plausibilität
+- Automatische Aktualisierung des Wochentags basierend auf dem Datum
 
-### Code Splitting
+**EditEntryForm.js**
+- Formular zum Bearbeiten bestehender Einträge
+- Vorausgefüllt mit den bestehenden Werten
+- Validierung wie bei AddEntryForm
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+**ImportModal.js**
+- Dialog zum Importieren von CSV-Dateien
+- Zeigt Vorschau der zu importierenden Daten
+- Meldet erkannte Probleme und behandelt fehlende Werte
 
-### Analyzing the Bundle Size
+#### UI
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+**StatusMessage.js**
+- Zeigt temporäre Erfolgs-, Fehler- und Infomeldungen
+- Verschiedene Stile je nach Meldungstyp
 
-### Making a Progressive Web App
+**ToggleViewButtons.js**
+- Schalter zum Umschalten zwischen Morgen- und Abendansicht
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Verwendete Bibliotheken
 
-### Advanced Configuration
+- React mit Hooks für die UI
+- Recharts für interaktive Diagramme
+- Lucide React für Symbole und Icons
+- Tailwind CSS für das Styling
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Funktionen
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Erfassung von Blutdruckwerten (systolisch, diastolisch, Puls)
+- Separate Erfassung von Morgen- und Abendwerten
+- Automatische Kategorisierung nach medizinischen Standards
+- Visualisierung als Liniendiagramm mit gleitenden Durchschnitten
+- Berechnung von Durchschnittswerten und Trends
+- Import von Daten aus CSV-Dateien
+- Responsive Design für verschiedene Bildschirmgrößen
