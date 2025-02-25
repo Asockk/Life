@@ -1,6 +1,6 @@
 // App.js
 import React, { useState } from 'react';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, FileText } from 'lucide-react';
 
 // Custom Hook
 import useBloodPressureData from './hooks/useBloodPressureData';
@@ -13,14 +13,17 @@ import ToggleViewButtons from './components/UI/ToggleViewButtons';
 import BloodPressureSummary from './components/Dashboard/BloodPressureSummary';
 import BloodPressureChart from './components/Dashboard/BloodPressureChart';
 import BloodPressureCategoryLegend from './components/Dashboard/BloodPressureCategoryLegend';
+import ContextFactorsTrend from './components/Dashboard/ContextFactorsTrend';
 
 // Table Component
 import BloodPressureTable from './components/Table/BloodPressureTable';
 
 // Forms
-import AddEntryForm from './components/Forms/AddEntryForm';
-import EditEntryForm from './components/Forms/EditEntryForm';
+import EntryFormWithContext from './components/Forms/EntryFormWithContext';
 import ImportModal from './components/Forms/ImportModal';
+
+// Reports
+import MedicalReportGenerator from './components/Reports/MedicalReportGenerator';
 
 const BlutdruckTracker = () => {
   // Daten-Hook
@@ -37,7 +40,17 @@ const BlutdruckTracker = () => {
     addEntry,
     updateEntry,
     deleteEntry,
-    importData
+    importData,
+    
+    // Kontextfaktoren
+    contextFactors,
+    getContextForDisplayDate,
+    getLatestContextFactors,
+    factorCorrelations,
+    
+    // Berichtsfunktionen
+    showReport,
+    toggleReport
   } = useBloodPressureData();
 
   // UI-State
@@ -58,22 +71,25 @@ const BlutdruckTracker = () => {
     setShowAddForm(false);
   };
 
-  const handleAddSubmit = (formData) => {
-    const result = addEntry(formData);
+  const handleAddSubmit = (_, formData, contextData) => {
+    const result = addEntry(formData, contextData);
     if (result.success) {
       setShowAddForm(false);
     }
     return result;
   };
 
-  const handleEditSubmit = (id, formData) => {
-    const result = updateEntry(id, formData);
+  const handleEditSubmit = (id, formData, contextData) => {
+    const result = updateEntry(id, formData, contextData);
     if (result.success) {
       setShowEditForm(false);
       setCurrentEntry(null);
     }
     return result;
   };
+
+  // Berechnet, ob genügend Kontext-Daten für die Trend-Anzeige vorhanden sind
+  const hasContextData = Object.keys(contextFactors).length > 0;
 
   return (
     <div className="mx-auto p-4 bg-gray-50 rounded-lg">
@@ -108,8 +124,13 @@ const BlutdruckTracker = () => {
       <BloodPressureSummary 
         avgValues={avgValues} 
         bpCategory={bpCategory} 
-        minMaxValues={minMaxValues} 
+        minMaxValues={minMaxValues}
       />
+      
+      {/* Kontext-Faktoren-Trends, falls Daten vorhanden */}
+      {hasContextData && (
+        <ContextFactorsTrend contextData={contextFactors} />
+      )}
       
       {/* Diagramm */}
       <BloodPressureChart 
@@ -125,20 +146,34 @@ const BlutdruckTracker = () => {
         onDelete={deleteEntry} 
       />
       
+      {/* Berichterstellung Button */}
+      <div className="mb-4 flex justify-end">
+        <button 
+          onClick={toggleReport}
+          className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center"
+        >
+          <FileText size={18} className="mr-1" />
+          Ärztlichen Bericht erstellen
+        </button>
+      </div>
+      
       {/* Blutdruck-Kategorien */}
       <BloodPressureCategoryLegend />
       
-      {/* Formulare */}
+      {/* Formulare mit integrierter Kontexterfassung */}
       {showAddForm && (
-        <AddEntryForm 
+        <EntryFormWithContext 
+          previousContext={getLatestContextFactors()}
           onSubmit={handleAddSubmit} 
           onCancel={() => setShowAddForm(false)} 
         />
       )}
       
       {showEditForm && currentEntry && (
-        <EditEntryForm 
-          entry={currentEntry} 
+        <EntryFormWithContext 
+          isEdit={true}
+          entry={currentEntry}
+          contextData={getContextForDisplayDate(currentEntry.datum)}
           onSubmit={handleEditSubmit} 
           onCancel={() => setShowEditForm(false)} 
         />
@@ -149,6 +184,17 @@ const BlutdruckTracker = () => {
         <ImportModal 
           onImport={importData} 
           onClose={() => setShowImportModal(false)} 
+        />
+      )}
+      
+      {/* Ärztlicher Bericht */}
+      {showReport && (
+        <MedicalReportGenerator 
+          data={data}
+          avgValues={avgValues}
+          bpCategory={bpCategory}
+          minMaxValues={minMaxValues}
+          contextFactors={contextFactors}
         />
       )}
     </div>
