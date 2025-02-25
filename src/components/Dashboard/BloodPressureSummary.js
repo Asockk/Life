@@ -5,6 +5,19 @@ import { ArrowUpCircle, ArrowDownCircle, Minus } from 'lucide-react';
 const BloodPressureSummary = ({ avgValues, bpCategory, minMaxValues }) => {
   const { sys, dia, puls } = avgValues;
   
+  // Erklärung für die Trendanzeigen
+  const getTrendExplanation = (value, type) => {
+    if (type === 'sys') {
+      if (value > 135) return "erhöht";
+      if (value < 125) return "niedrig";
+      return "normal";
+    } else { // dia
+      if (value > 70) return "erhöht";
+      if (value < 65) return "niedrig";
+      return "normal";
+    }
+  };
+  
   return (
     <div className="mb-4">
       <div className="bg-white p-4 rounded-lg shadow-sm">
@@ -26,27 +39,27 @@ const BloodPressureSummary = ({ avgValues, bpCategory, minMaxValues }) => {
                 <div className="text-lg ml-1">mmHg</div>
                 <div className="text-sm text-gray-500 ml-3">Puls: {puls}</div>
                 
-                {/* Trend Icons */}
-                <div className="flex items-center ml-3">
-                  <div className="flex flex-col items-center mx-1" title="Systolischer Trend">
+                {/* Vergrößerte Trend Icons mit mehr horizontalem Abstand */}
+                <div className="flex items-center ml-6 space-x-6">
+                  <div className="flex flex-col items-center" title="Systolischer Trend">
                     {sys > 135 ? (
-                      <ArrowUpCircle size={18} color="#FF4136" />
+                      <ArrowUpCircle size={32} color="#FF4136" strokeWidth={2.5} />
                     ) : sys < 125 ? (
-                      <ArrowDownCircle size={18} color="#0074D9" />
+                      <ArrowDownCircle size={32} color="#0074D9" strokeWidth={2.5} />
                     ) : (
-                      <Minus size={18} color="#2ECC40" />
+                      <Minus size={32} color="#2ECC40" strokeWidth={2.5} />
                     )}
-                    <span className="text-xs mt-0.5">Sys</span>
+                    <span className="text-sm font-medium mt-1">Sys: {getTrendExplanation(sys, 'sys')}</span>
                   </div>
-                  <div className="flex flex-col items-center mx-1" title="Diastolischer Trend">
+                  <div className="flex flex-col items-center" title="Diastolischer Trend">
                     {dia > 70 ? (
-                      <ArrowUpCircle size={18} color="#FF4136" />
+                      <ArrowUpCircle size={32} color="#FF4136" strokeWidth={2.5} />
                     ) : dia < 65 ? (
-                      <ArrowDownCircle size={18} color="#0074D9" />
+                      <ArrowDownCircle size={32} color="#0074D9" strokeWidth={2.5} />
                     ) : (
-                      <Minus size={18} color="#2ECC40" />
+                      <Minus size={32} color="#2ECC40" strokeWidth={2.5} />
                     )}
-                    <span className="text-xs mt-0.5">Dia</span>
+                    <span className="text-sm font-medium mt-1">Dia: {getTrendExplanation(dia, 'dia')}</span>
                   </div>
                 </div>
               </div>
