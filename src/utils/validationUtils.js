@@ -83,13 +83,13 @@ export const getWeekdayFromDate = (dateValue) => {
   return '';
 };
 
-// Formatiert das Datum für die Anzeige
+// Formatiert das Datum für die Anzeige im europäischen Format
 export const formatDateForDisplay = (dateValue) => {
   if (dateValue && dateValue.includes('-')) {
     const [year, month, day] = dateValue.split('-');
     const months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
                   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-    return `${months[parseInt(month) - 1]} ${parseInt(day)}`;
+    return `${parseInt(day)}. ${months[parseInt(month) - 1]}`;
   }
   return dateValue;
 };

@@ -1,9 +1,10 @@
 // components/Forms/ImportModal.js
 import React, { useState } from 'react';
-import { Check, X, FileText } from 'lucide-react';
+import { Check, X, FileText, Download, Upload } from 'lucide-react';
 import { parseCSVData } from '../../utils/dataUtils';
+import { exportToCSV } from '../../utils/csvExportUtils';
 
-const ImportModal = ({ onImport, onClose }) => {
+const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
   const [importData, setImportData] = useState(null);
   const [importError, setImportError] = useState('');
   const [importPreview, setImportPreview] = useState([]);
@@ -74,11 +75,21 @@ const ImportModal = ({ onImport, onClose }) => {
     }
   };
   
+  // Funktion zum Export der aktuellen Daten
+  const handleExportData = () => {
+    if (!data || data.length === 0) {
+      setImportError('Keine Daten zum Exportieren vorhanden.');
+      return;
+    }
+    
+    exportToCSV(data, contextFactors);
+  };
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Blutdruckdaten importieren</h3>
+          <h3 className="text-lg font-medium">Blutdruckdaten importieren/exportieren</h3>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
@@ -88,27 +99,49 @@ const ImportModal = ({ onImport, onClose }) => {
         </div>
         
         <div className="mb-6">
-          <p className="text-sm text-gray-600 mb-4">
-            Wählen Sie eine CSV-Datei mit Blutdruckdaten zum Importieren aus. 
-            Das Format sollte Spalten für Tag, Datum, und Blutdruckwerte (morgens und abends) enthalten.
-          </p>
-          
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <input
-              type="file"
-              id="file-upload"
-              className="hidden"
-              accept=".csv"
-              onChange={handleFileUpload}
-            />
-            <label 
-              htmlFor="file-upload"
-              className="cursor-pointer flex flex-col items-center"
-            >
-              <FileText size={40} className="text-blue-500 mb-2" />
-              <span className="font-medium text-blue-500">CSV-Datei auswählen</span>
-              <span className="text-xs text-gray-500 mt-1">oder hierher ziehen</span>
-            </label>
+          <div className="flex flex-wrap gap-4 mb-4">
+            <div className="flex-1 min-w-[280px]">
+              <p className="text-sm text-gray-600 mb-4">
+                <strong>Daten importieren:</strong> Wählen Sie eine CSV-Datei mit Blutdruckdaten aus.
+                Das Format sollte Spalten für Tag, Datum, und Blutdruckwerte enthalten.
+              </p>
+              
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  id="file-upload"
+                  className="hidden"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                />
+                <label 
+                  htmlFor="file-upload"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <Upload size={40} className="text-blue-500 mb-2" />
+                  <span className="font-medium text-blue-500">CSV-Datei auswählen</span>
+                  <span className="text-xs text-gray-500 mt-1">oder hierher ziehen</span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="flex-1 min-w-[280px]">
+              <p className="text-sm text-gray-600 mb-4">
+                <strong>Daten exportieren:</strong> Laden Sie Ihre aktuellen Blutdruckdaten als CSV-Datei
+                herunter, um sie zu sichern oder in anderen Programmen zu verwenden.
+              </p>
+              
+              <div className="border-2 border-gray-300 rounded-lg p-6 text-center">
+                <button
+                  onClick={handleExportData}
+                  className="cursor-pointer flex flex-col items-center w-full"
+                >
+                  <Download size={40} className="text-green-500 mb-2" />
+                  <span className="font-medium text-green-500">Daten als CSV exportieren</span>
+                  <span className="text-xs text-gray-500 mt-1">Enthält alle Messungen und Kontextfaktoren</span>
+                </button>
+              </div>
+            </div>
           </div>
           
           {importError && (
@@ -165,24 +198,25 @@ const ImportModal = ({ onImport, onClose }) => {
           )}
         </div>
         
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none mr-3"
-          >
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            onClick={confirmImport}
-            className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none flex items-center"
-            disabled={!importData || importData.length === 0}
-          >
-            <Check size={16} className="mr-2" />
-            Importieren
-          </button>
-        </div>
+        {importData && importData.length > 0 && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none mr-3"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              onClick={confirmImport}
+              className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none flex items-center"
+            >
+              <Check size={16} className="mr-2" />
+              Importieren
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

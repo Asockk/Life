@@ -96,7 +96,7 @@ const BlutdruckTracker = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Blutdruck-Tracker</h1>
-        <div className="flex">
+        <div className="flex flex-wrap gap-2">
           <button 
             onClick={handleAddNew}
             className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center"
@@ -106,10 +106,10 @@ const BlutdruckTracker = () => {
           </button>
           <button 
             onClick={() => setShowImportModal(true)}
-            className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center ml-2"
+            className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center"
           >
             <Upload size={18} className="mr-1" />
-            Importieren
+            Import/Export
           </button>
         </div>
       </div>
@@ -179,11 +179,13 @@ const BlutdruckTracker = () => {
         />
       )}
       
-      {/* Import-Modal */}
+      {/* Import/Export-Modal */}
       {showImportModal && (
         <ImportModal 
           onImport={importData} 
-          onClose={() => setShowImportModal(false)} 
+          onClose={() => setShowImportModal(false)}
+          data={data}
+          contextFactors={contextFactors}
         />
       )}
       

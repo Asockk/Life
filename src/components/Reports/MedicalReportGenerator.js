@@ -2,7 +2,9 @@
 import React, { useState } from 'react';
 import { FileText, Download, Share2, Calendar, User, Phone, Mail } from 'lucide-react';
 import { getBloodPressureCategory } from '../../utils/bloodPressureUtils';
-import { QRCodeCanvas } from 'qrcode.react'; // Korrigierter Import
+import { QRCodeCanvas } from 'qrcode.react';
+import { generatePdfReport } from '../../utils/pdfExportUtils';
+import { exportToCSV } from '../../utils/csvExportUtils';
 
 const MedicalReportGenerator = ({ data, avgValues, bpCategory, minMaxValues, contextFactors }) => {
   const [showPreview, setShowPreview] = useState(false);
@@ -179,31 +181,41 @@ const MedicalReportGenerator = ({ data, avgValues, bpCategory, minMaxValues, con
     
     if (!avgFactors) return insights;
     
+    // Werte-Labels für die Kontextfaktoren
+    const valueLabels = {
+      'stress': ['Niedrig', 'Mittel', 'Hoch'],
+      'sleep': ['Schlecht', 'Mittel', 'Gut'],
+      'activity': ['Niedrig', 'Mittel', 'Hoch'],
+      'salt': ['Niedrig', 'Mittel', 'Hoch'],
+      'caffeine': ['Niedrig', 'Mittel', 'Hoch'],
+      'alcohol': ['Keiner', 'Wenig', 'Viel']
+    };
+    
     // Stress
     if (avgFactors.stress !== undefined) {
-      if (avgFactors.stress > 3) {
-        insights.push("Hoher Stress korreliert möglicherweise mit erhöhten Blutdruckwerten");
+      if (avgFactors.stress > 1) {
+        insights.push(`Stress (${valueLabels.stress[Math.round(avgFactors.stress)]}) korreliert möglicherweise mit erhöhten Werten`);
       }
     }
     
     // Schlaf
     if (avgFactors.sleep !== undefined) {
-      if (avgFactors.sleep < 3) {
-        insights.push("Mangelnder Schlaf könnte zu Blutdruckschwankungen beitragen");
+      if (avgFactors.sleep < 1) {
+        insights.push(`Mangelnder Schlaf (${valueLabels.sleep[Math.round(avgFactors.sleep)]}) könnte zu Blutdruckschwankungen beitragen`);
       }
     }
     
     // Salzkonsum
     if (avgFactors.salt !== undefined) {
-      if (avgFactors.salt > 3) {
-        insights.push("Erhöhter Salzkonsum kann höhere systolische Werte begünstigen");
+      if (avgFactors.salt > 1) {
+        insights.push(`Erhöhter Salzkonsum (${valueLabels.salt[Math.round(avgFactors.salt)]}) kann höhere systolische Werte begünstigen`);
       }
     }
     
     // Aktivität
     if (avgFactors.activity !== undefined) {
-      if (avgFactors.activity < 2) {
-        insights.push("Geringe körperliche Aktivität kann langfristig zu höherem Blutdruck führen");
+      if (avgFactors.activity < 1) {
+        insights.push(`Geringe körperliche Aktivität (${valueLabels.activity[Math.round(avgFactors.activity)]}) kann zu höherem Blutdruck führen`);
       }
     }
     
@@ -230,10 +242,14 @@ const MedicalReportGenerator = ({ data, avgValues, bpCategory, minMaxValues, con
     return JSON.stringify(reportData);
   };
   
-  // Berichtsdownload als PDF simulieren (würde in echter Anwendung PDF generieren)
-  const handleDownload = () => {
-    alert('PDF-Bericht wird generiert und heruntergeladen...');
-    // In einer echten App würde hier ein PDF generiert werden
+  // PDF-Bericht herunterladen
+  const handleDownloadPDF = () => {
+    generatePdfReport(data, patientInfo, avgValues, bpCategory, minMaxValues, contextFactors);
+  };
+  
+  // CSV-Export aller Daten
+  const handleExportCSV = () => {
+    exportToCSV(data, contextFactors);
   };
   
   // Berichtvorschau anzeigen oder ausblenden
@@ -374,7 +390,7 @@ const MedicalReportGenerator = ({ data, avgValues, bpCategory, minMaxValues, con
             </div>
           </div>
           
-          <div className="flex justify-end space-x-3 mt-4">
+          <div className="flex flex-wrap justify-end space-x-3 mt-4">
             <button
               onClick={togglePreview}
               className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center"
@@ -475,22 +491,22 @@ const MedicalReportGenerator = ({ data, avgValues, bpCategory, minMaxValues, con
                 <h4 className="font-medium mb-2">Einflussfaktoren (Durchschnitt der letzten 7 Tage)</h4>
                 <div className="grid grid-cols-3 gap-2 text-sm">
                   {avgContextFactors.stress !== undefined && (
-                    <div>Stress: <span className="font-medium">{avgContextFactors.stress} / 5</span></div>
+                    <div>Stress: <span className="font-medium">{avgContextFactors.stress.toFixed(1)} / 2</span></div>
                   )}
                   {avgContextFactors.sleep !== undefined && (
-                    <div>Schlafqualität: <span className="font-medium">{avgContextFactors.sleep} / 5</span></div>
+                    <div>Schlafqualität: <span className="font-medium">{avgContextFactors.sleep.toFixed(1)} / 2</span></div>
                   )}
                   {avgContextFactors.activity !== undefined && (
-                    <div>Aktivität: <span className="font-medium">{avgContextFactors.activity} / 5</span></div>
+                    <div>Aktivität: <span className="font-medium">{avgContextFactors.activity.toFixed(1)} / 2</span></div>
                   )}
                   {avgContextFactors.salt !== undefined && (
-                    <div>Salzkonsum: <span className="font-medium">{avgContextFactors.salt} / 5</span></div>
+                    <div>Salzkonsum: <span className="font-medium">{avgContextFactors.salt.toFixed(1)} / 2</span></div>
                   )}
                   {avgContextFactors.caffeine !== undefined && (
-                    <div>Koffein: <span className="font-medium">{avgContextFactors.caffeine} / 3</span></div>
+                    <div>Koffein: <span className="font-medium">{avgContextFactors.caffeine.toFixed(1)} / 2</span></div>
                   )}
                   {avgContextFactors.alcohol !== undefined && (
-                    <div>Alkohol: <span className="font-medium">{avgContextFactors.alcohol} / 3</span></div>
+                    <div>Alkohol: <span className="font-medium">{avgContextFactors.alcohol.toFixed(1)} / 2</span></div>
                   )}
                 </div>
                 
@@ -526,22 +542,22 @@ const MedicalReportGenerator = ({ data, avgValues, bpCategory, minMaxValues, con
             </div>
           </div>
           
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-wrap justify-end space-x-0 sm:space-x-3">
             <button
               onClick={togglePreview}
-              className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 py-2 px-4 rounded-lg"
+              className="w-full sm:w-auto border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 py-2 px-4 rounded-lg mb-2 sm:mb-0"
             >
               Bearbeiten
             </button>
             <button
-              onClick={handleDownload}
-              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center"
+              onClick={handleDownloadPDF}
+              className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center justify-center mb-2 sm:mb-0"
             >
               <Download size={18} className="mr-2" />
               PDF herunterladen
             </button>
             <button
-              className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center"
+              className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center"
             >
               <Share2 size={18} className="mr-2" />
               Mit Arzt teilen

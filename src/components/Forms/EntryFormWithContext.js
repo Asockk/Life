@@ -1,9 +1,26 @@
-// Erweiterung des AddEntryForm und EditEntryForm
 // components/Forms/EntryFormWithContext.js
-
 import React, { useState, useEffect } from 'react';
-import { X, Check, Calendar, Heart, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { X, Check, Calendar, Heart, Moon, Activity, Utensils, Coffee, Wine } from 'lucide-react';
 import { validateBloodPressure, validateForm, getWeekdayFromDate } from '../../utils/validationUtils';
+
+// Parse-Datum Funktion
+const parseDate = (dateStr) => {
+  if (dateStr.includes(' ')) {
+    const monthName = dateStr.split(' ')[0];
+    const day = dateStr.split(' ')[1];
+    
+    // Monatsnamen in Zahlen umwandeln
+    const months = {
+      'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
+      'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
+      'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+    };
+    
+    const month = months[monthName] || '01';
+    return `2025-${month}-${day.padStart(2, '0')}`;
+  }
+  return dateStr;
+};
 
 const EntryFormWithContext = ({ 
   isEdit = false, 
@@ -44,31 +61,12 @@ const EntryFormWithContext = ({
   const [showContext, setShowContext] = useState(false);
   const [contextFactors, setContextFactors] = useState(contextData || {
     stress: previousContext?.stress !== undefined ? previousContext.stress : 1,
-    sleep: previousContext?.sleep !== undefined ? previousContext.sleep : 3,
-    activity: previousContext?.activity !== undefined ? previousContext.activity : 2,
-    salt: previousContext?.salt !== undefined ? previousContext.salt : 2,
+    sleep: previousContext?.sleep !== undefined ? previousContext.sleep : 1,
+    activity: previousContext?.activity !== undefined ? previousContext.activity : 1,
+    salt: previousContext?.salt !== undefined ? previousContext.salt : 1,
     caffeine: previousContext?.caffeine !== undefined ? previousContext.caffeine : 1,
     alcohol: previousContext?.alcohol !== undefined ? previousContext.alcohol : 0,
   });
-
-  // Datum parsen (für Edit-Formular)
-  const parseDate = (dateStr) => {
-    if (dateStr.includes(' ')) {
-      const monthName = dateStr.split(' ')[0];
-      const day = dateStr.split(' ')[1];
-      
-      // Monatsnamen in Zahlen umwandeln
-      const months = {
-        'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
-        'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
-        'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
-      };
-      
-      const month = months[monthName] || '01';
-      return `2025-${month}-${day.padStart(2, '0')}`;
-    }
-    return dateStr;
-  };
   
   // Aktualisiere den Wochentag, wenn sich das Datum ändert
   useEffect(() => {
@@ -119,14 +117,68 @@ const EntryFormWithContext = ({
     }));
   };
   
-  // Komponentenliste für jeden Faktor mit Icon, Name und max Wert
+  // Komponentenliste für jeden Faktor mit korrekten Icons, Name und verkürzten Optionen (nur 3 pro Faktor)
   const factorComponents = [
-    { name: 'stress', icon: <Heart size={20} />, label: 'Stress', max: 5 },
-    { name: 'sleep', icon: <X size={20} />, label: 'Schlafqualität', max: 5 },
-    { name: 'activity', icon: <X size={20} />, label: 'Körperliche Aktivität', max: 5 },
-    { name: 'salt', icon: <X size={20} />, label: 'Salzkonsum', max: 5 },
-    { name: 'caffeine', icon: <X size={20} />, label: 'Koffein', max: 3 },
-    { name: 'alcohol', icon: <X size={20} />, label: 'Alkohol', max: 3 },
+    { 
+      name: 'stress', 
+      icon: <Heart size={20} />, 
+      label: 'Stress', 
+      options: [
+        { value: 0, label: 'Niedrig' },
+        { value: 1, label: 'Mittel' },
+        { value: 2, label: 'Hoch' }
+      ]
+    },
+    { 
+      name: 'sleep', 
+      icon: <Moon size={20} />, 
+      label: 'Schlafqualität', 
+      options: [
+        { value: 0, label: 'Schlecht' },
+        { value: 1, label: 'Mittel' },
+        { value: 2, label: 'Gut' }
+      ]
+    },
+    { 
+      name: 'activity', 
+      icon: <Activity size={20} />, 
+      label: 'Körperliche Aktivität', 
+      options: [
+        { value: 0, label: 'Niedrig' },
+        { value: 1, label: 'Mittel' },
+        { value: 2, label: 'Hoch' }
+      ]
+    },
+    { 
+      name: 'salt', 
+      icon: <Utensils size={20} />, 
+      label: 'Salzkonsum', 
+      options: [
+        { value: 0, label: 'Niedrig' },
+        { value: 1, label: 'Mittel' },
+        { value: 2, label: 'Hoch' }
+      ]
+    },
+    { 
+      name: 'caffeine', 
+      icon: <Coffee size={20} />, 
+      label: 'Koffein', 
+      options: [
+        { value: 0, label: 'Niedrig' },
+        { value: 1, label: 'Mittel' },
+        { value: 2, label: 'Hoch' }
+      ]
+    },
+    { 
+      name: 'alcohol', 
+      icon: <Wine size={20} />, 
+      label: 'Alkohol', 
+      options: [
+        { value: 0, label: 'Keiner' },
+        { value: 1, label: 'Wenig' },
+        { value: 2, label: 'Viel' }
+      ]
+    }
   ];
   
   return (
@@ -329,7 +381,7 @@ const EntryFormWithContext = ({
             </button>
           </div>
           
-          {/* Kontextfaktoren-Bereich */}
+          {/* Kontextfaktoren-Bereich - vereinfacht auf 3 Optionen pro Faktor */}
           {showContext && (
             <div className="mb-4 bg-gray-50 p-3 rounded-md">
               <p className="text-sm text-gray-600 mb-2">
@@ -344,18 +396,18 @@ const EntryFormWithContext = ({
                       <span className="text-sm font-medium">{factor.label}</span>
                     </div>
                     
-                    <div className="flex justify-between">
-                      {[...Array(factor.max + 1)].map((_, i) => (
+                    <div className="flex justify-between space-x-2">
+                      {factor.options.map((option) => (
                         <button
                           type="button"
-                          key={i}
-                          onClick={() => updateFactor(factor.name, i)}
-                          className={`h-7 w-7 rounded-full flex items-center justify-center text-xs 
-                            ${contextFactors[factor.name] === i 
+                          key={option.value}
+                          onClick={() => updateFactor(factor.name, option.value)}
+                          className={`flex-1 py-2 rounded-md text-xs 
+                            ${contextFactors[factor.name] === option.value
                               ? 'bg-indigo-500 text-white' 
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                         >
-                          {i}
+                          {option.label}
                         </button>
                       ))}
                     </div>

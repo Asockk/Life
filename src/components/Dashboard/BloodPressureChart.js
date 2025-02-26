@@ -1,12 +1,141 @@
 // components/Dashboard/BloodPressureChart.js
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-         ResponsiveContainer, ReferenceLine, Area } from 'recharts';
+         ResponsiveContainer, ReferenceLine } from 'recharts';
 import { getBloodPressureCategory } from '../../utils/bloodPressureUtils';
+import { Filter, Calendar } from 'lucide-react';
 
 const BloodPressureChart = ({ data, viewType, avgValues }) => {
+  // Zeitraumfilter für das Diagramm
+  const [dateFilter, setDateFilter] = useState('all'); // 'all', 'month', 'week', 'custom'
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [showFilterOptions, setShowFilterOptions] = useState(false);
+  
   // Prefix für aktuelle Ansicht (morgen oder abend)
   const prefix = viewType === 'morgen' ? 'morgen' : 'abend';
+  
+  // Filtere Daten basierend auf dem ausgewählten Zeitraum
+  const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    
+    // Konvertiert Datum wie "Januar 15" in ein Date-Objekt
+    const parseDate = (dateStr) => {
+      const months = {
+        'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
+        'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
+        'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
+      };
+      
+      if (dateStr && dateStr.includes(' ')) {
+        const [month, day] = dateStr.split(' ');
+        if (months[month] !== undefined) {
+          // Verwende 2025 als Standardjahr
+          return new Date(2025, months[month], parseInt(day));
+        }
+      }
+      return null;
+    };
+    
+    const now = new Date();
+    
+    // Filtere basierend auf dem ausgewählten Zeitraum
+    switch (dateFilter) {
+      case 'month': {
+        // Letzter Monat
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        
+        return data.filter(item => {
+          const itemDate = parseDate(item.datum);
+          return itemDate && itemDate >= oneMonthAgo && itemDate <= now;
+        });
+      }
+      case 'week': {
+        // Letzte Woche
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        
+        return data.filter(item => {
+          const itemDate = parseDate(item.datum);
+          return itemDate && itemDate >= oneWeekAgo && itemDate <= now;
+        });
+      }
+      case 'custom': {
+        // Benutzerdefinierter Zeitraum
+        if (!customStartDate || !customEndDate) return data;
+        
+        const startDate = new Date(customStartDate);
+        const endDate = new Date(customEndDate);
+        
+        return data.filter(item => {
+          const itemDate = parseDate(item.datum);
+          return itemDate && itemDate >= startDate && itemDate <= endDate;
+        });
+      }
+      default:
+        // Alle Daten
+        return data;
+    }
+  }, [data, dateFilter, customStartDate, customEndDate]);
+  
+  // Verfügbare Zeiträume für das Dropdown
+  const filterOptions = [
+    { id: 'all', label: 'Alle Daten' },
+    { id: 'month', label: 'Letzter Monat' },
+    { id: 'week', label: 'Letzte Woche' }
+  ];
+  
+  // Berechne den ersten und letzten Tag des angezeigten Zeitraums für Anzeige
+  const getDateRange = () => {
+    if (filteredData.length === 0) {
+      return "Keine Daten";
+    }
+    
+    // Sortiere nach Datum
+    const sortedData = [...filteredData].sort((a, b) => {
+      const parseDate = (dateStr) => {
+        const months = {
+          'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
+          'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
+          'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
+        };
+        
+        if (dateStr && dateStr.includes(' ')) {
+          const [month, day] = dateStr.split(' ');
+          if (months[month] !== undefined) {
+            return new Date(2025, months[month], parseInt(day));
+          }
+        }
+        return new Date(0);
+      };
+      
+      return parseDate(a.datum) - parseDate(b.datum);
+    });
+    
+    // Formatiere für Anzeige
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "";
+      
+      const months = {
+        'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
+        'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
+        'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+      };
+      
+      if (dateStr.includes(' ')) {
+        const [month, day] = dateStr.split(' ');
+        return `${day.padStart(2, '0')}.${months[month]}.2025`;
+      }
+      
+      return dateStr;
+    };
+    
+    const firstDate = formatDate(sortedData[0].datum);
+    const lastDate = formatDate(sortedData[sortedData.length - 1].datum);
+    
+    return `${firstDate} - ${lastDate}`;
+  };
   
   // Custom Dot für die Linien, um 0-Werte nicht anzuzeigen
   const CustomizedDot = (props) => {
@@ -94,19 +223,105 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
   
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <h2 className="text-lg font-semibold">
           {viewType === 'morgen' ? 'Morgen-Blutdruckwerte' : 'Abend-Blutdruckwerte'}
         </h2>
-        <div className="text-sm text-gray-500">
-          {data.length} Messungen
+        
+        <div className="flex items-center space-x-3">
+          <div className="text-sm text-gray-500">
+            {filteredData.length} Messungen
+          </div>
+          
+          {/* Zeitraum-Filter Dropdown */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowFilterOptions(!showFilterOptions)}
+              className="flex items-center text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md"
+            >
+              <Filter size={16} className="mr-1.5" />
+              {filterOptions.find(option => option.id === dateFilter)?.label || 'Zeitraum'}
+            </button>
+            
+            {showFilterOptions && (
+              <div className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                <div className="p-2">
+                  {filterOptions.map(option => (
+                    <button
+                      key={option.id}
+                      onClick={() => {
+                        setDateFilter(option.id);
+                        setShowFilterOptions(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-md text-sm ${
+                        dateFilter === option.id ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                  
+                  {/* Option für benutzerdefinierten Zeitraum */}
+                  <button
+                    onClick={() => {
+                      setDateFilter('custom');
+                      // Nicht schließen - lässt Benutzer die Datumsfelder sehen
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm ${
+                      dateFilter === 'custom' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    Benutzerdefinierter Zeitraum
+                  </button>
+                  
+                  {/* Benutzerdefinierte Datumsfelder */}
+                  {dateFilter === 'custom' && (
+                    <div className="p-2 border-t mt-2">
+                      <div className="flex flex-col space-y-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Von:</label>
+                          <input
+                            type="date"
+                            value={customStartDate}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            className="w-full p-1.5 text-sm border border-gray-300 rounded-md"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Bis:</label>
+                          <input
+                            type="date"
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            className="w-full p-1.5 text-sm border border-gray-300 rounded-md"
+                          />
+                        </div>
+                        <button
+                          onClick={() => setShowFilterOptions(false)}
+                          className="w-full bg-blue-500 text-white py-1.5 rounded-md text-sm"
+                        >
+                          Anwenden
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+      </div>
+      
+      {/* Zeitraumanzeige - immer sichtbar */}
+      <div className="text-sm text-gray-600 mb-3 flex items-center border-b pb-2">
+        <Calendar size={16} className="mr-2" />
+        Zeitraum: {getDateRange()}
       </div>
       
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart 
-            data={data} 
+            data={filteredData} 
             margin={{ top: 20, right: 120, left: 10, bottom: 10 }}
             connectNulls={false} // Wichtig: 0-Werte nicht verbinden
           >
@@ -131,13 +346,13 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
               wrapperStyle={{ paddingBottom: '10px' }}
             />
                 
-            {/* Referenzlinien für Blutdruckbereiche mit verbesserten Labels */}
+            {/* Referenzlinien für Blutdruckbereiche */}
             <ReferenceLine 
               y={120} 
               stroke="#2ECC40" 
               strokeDasharray="3 3" 
               label={{
-                value: "Optimal/Normal", 
+                value: "Normal", 
                 position: "right", 
                 fill: "#2ECC40",
                 offset: 5
@@ -164,24 +379,6 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                 fill: "#FF4136",
                 offset: 5
               }} 
-            />
-                
-            {/* Durchschnitt-Bereiche */}
-            <Area 
-              type="monotone" 
-              dataKey={`avg${prefix.charAt(0).toUpperCase()}${prefix.slice(1)}Sys`} 
-              fill="#FF4136" 
-              fillOpacity={0.1} 
-              stroke="none" 
-              name="Sys-Durchschnitt"
-            />
-            <Area 
-              type="monotone" 
-              dataKey={`avg${prefix.charAt(0).toUpperCase()}${prefix.slice(1)}Dia`} 
-              fill="#0074D9" 
-              fillOpacity={0.1} 
-              stroke="none" 
-              name="Dia-Durchschnitt"
             />
                 
             {/* Hauptlinien mit angepassten Dots, um 0-Werte zu ignorieren */}
@@ -216,37 +413,13 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
               connectNulls={false} // 0-Werte nicht verbinden
             />
                 
-            {/* Gleitende Durchschnitte */}
-            <Line 
-              type="monotone" 
-              dataKey={`${prefix}SysMA`} 
-              stroke="#FF851B" 
-              name="Sys (3-Tage-Ø)" 
-              strokeWidth={2}
-              strokeDasharray="5 5" 
-              dot={false}
-              activeDot={false}
-              connectNulls={true} // Durchschnitte können verbunden werden
-            />
-            <Line 
-              type="monotone" 
-              dataKey={`${prefix}DiaMA`} 
-              stroke="#39CCCC" 
-              name="Dia (3-Tage-Ø)" 
-              strokeWidth={2}
-              strokeDasharray="5 5" 
-              dot={false}
-              activeDot={false}
-              connectNulls={true} // Durchschnitte können verbunden werden
-            />
-                
-            {/* Globale Durchschnittslinien mit verbesserten Labels */}
+            {/* Durchschnittslinien */}
             <ReferenceLine 
               y={avgValues.sys} 
               stroke="#B10DC9" 
               strokeWidth={1.5}
               label={{
-                value: "Ø Sys: " + avgValues.sys, 
+                value: "Ø Sys", 
                 position: "left", 
                 fill: "#B10DC9",
                 offset: 5
@@ -257,7 +430,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
               stroke="#7FDBFF" 
               strokeWidth={1.5}
               label={{
-                value: "Ø Dia: " + avgValues.dia, 
+                value: "Ø Dia", 
                 position: "left", 
                 fill: "#7FDBFF",
                 offset: 5
@@ -266,17 +439,8 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      
-      <div className="mt-3 text-xs text-gray-500 grid grid-cols-2 md:grid-cols-3 gap-y-1">
-        <div><span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Systolisch</div>
-        <div><span className="inline-block w-3 h-3 rounded-full bg-blue-500 mr-1"></span> Diastolisch</div>
-        <div><span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Puls</div>
-        <div><span className="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"></span> 3-Tage-Durchschnitt Sys</div>
-        <div><span className="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-1"></span> 3-Tage-Durchschnitt Dia</div>
-        <div><span className="inline-block w-3 h-3 border-2 border-purple-500 mr-1"></span> Gesamt-Durchschnitt</div>
-      </div>
     </div>
   );
 };
 
-export default BloodPressureChart;  
+export default BloodPressureChart;
