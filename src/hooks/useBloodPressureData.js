@@ -1,7 +1,7 @@
 // hooks/useBloodPressureData.js
 // Verbesserte Version mit integrierter Kontextfaktor-Verwaltung
 import { useState, useCallback, useMemo } from 'react';
-import { initialData, prepareDataWithMovingAverages, prepareDataWithAverages, sortDataByDate } from '../utils/dataUtils';
+import { initialData, prepareDataWithMovingAverages, prepareDataWithAverages, sortDataByDate, standardizeDateFormat } from '../utils/dataUtils';
 import { getBloodPressureCategory, calculateAverage } from '../utils/bloodPressureUtils';
 import { validateBloodPressure, validateForm, formatDateForDisplay } from '../utils/validationUtils';
 
@@ -81,19 +81,53 @@ const useBloodPressureData = () => {
     return null;
   }, [contextFactors]);
 
-  // Konvertiert ein Anzeigedatum wie "Januar 15" in das Format "2025-01-15"
+  // Konvertiert ein Anzeigedatum wie "Januar 15" oder "1. Januar" in das Format "2025-01-15"
   const convertDisplayDateToISO = useCallback((displayDate) => {
-    if (!displayDate || !displayDate.includes(' ')) return null;
+    if (!displayDate) return null;
     
-    const [month, day] = displayDate.split(' ');
-    const months = {
-      'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
-      'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
-      'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
-    };
+    // Fall 1: Format "Januar 15" (Standardformat)
+    if (displayDate.includes(' ') && !displayDate.includes('.')) {
+      const [month, day] = displayDate.split(' ');
+      const months = {
+        'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
+        'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
+        'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+      };
+      
+      // Standard-Jahr 2025 verwenden
+      return `2025-${months[month] || '01'}-${day.padStart(2, '0')}`;
+    }
     
-    // Standard-Jahr 2025 verwenden (könnte auch dynamisch sein)
-    return `2025-${months[month]}-${day.padStart(2, '0')}`;
+    // Fall 2: Format "1. Januar" (europäisches Format)
+    if (displayDate.includes('.') && displayDate.includes(' ')) {
+      let day, month;
+      
+      if (displayDate.startsWith(displayDate.match(/\d+/)[0])) {
+        // Format "1. Januar"
+        day = displayDate.match(/\d+/)[0];
+        month = displayDate.split('. ')[1].trim();
+      } else {
+        // Andere Varianten
+        const parts = displayDate.split(' ');
+        month = parts[0];
+        day = parts[1].replace('.', '').trim();
+      }
+      
+      const months = {
+        'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
+        'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
+        'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+      };
+      
+      return `2025-${months[month] || '01'}-${day.padStart(2, '0')}`;
+    }
+    
+    // Fall 3: Bereits im ISO-Format (YYYY-MM-DD)
+    if (displayDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return displayDate;
+    }
+    
+    return null;
   }, []);
 
   // Hole Kontextfaktoren für ein spezifisches Anzeigedatum
@@ -161,8 +195,8 @@ const useBloodPressureData = () => {
       if (validData.length < 3) return 0;
       
       // Sehr einfache Korrelation: Durchschnitt bei hohen vs. niedrigen Werten
-      const highContextValues = validData.filter(item => item.context[contextFactor] > 3);
-      const lowContextValues = validData.filter(item => item.context[contextFactor] <= 2);
+      const highContextValues = validData.filter(item => item.context[contextFactor] > 1);
+      const lowContextValues = validData.filter(item => item.context[contextFactor] <= 1);
       
       if (highContextValues.length === 0 || lowContextValues.length === 0) return 0;
       
@@ -311,32 +345,72 @@ const useBloodPressureData = () => {
     }
   }, [data, contextFactors, showStatusMessage, convertDisplayDateToISO]);
 
-  // Funktion zum Importieren von Daten
+  // Verbesserte Funktion zum Importieren von Daten mit zuverlässiger Duplikaterkennung
   const importData = useCallback((importedData, importedContext = null) => {
     if (!importedData || importedData.length === 0) {
       return false;
     }
     
-    // Bestehende Daten mit den neuen Daten zusammenführen
+    // Bestehende Daten
     const existingData = [...data];
     
-    // Für jedes importierte Element prüfen, ob es bereits existiert
-    importedData.forEach(newEntry => {
-      const existingIndex = existingData.findIndex(item => 
-        item.datum === newEntry.datum && item.tag === newEntry.tag
-      );
-      
-      if (existingIndex !== -1) {
-        // Eintrag mit diesem Datum ersetzen
-        existingData[existingIndex] = newEntry;
-      } else {
-        // Neuen Eintrag hinzufügen
-        existingData.push(newEntry);
+    // Erstelle ein Set von standardisierten Datumsformaten für bestehende Daten
+    // um effizient prüfen zu können, ob ein Datum bereits existiert
+    const existingDatesSet = new Set();
+    
+    existingData.forEach(item => {
+      // Generiere ein standardisiertes Datum, das unabhängig vom Format vergleichbar ist
+      const standardDate = standardizeDateFormat(item.datum, item.tag);
+      if (standardDate) {
+        existingDatesSet.add(standardDate);
       }
     });
     
+    // Führe die importierten Daten mit den bestehenden zusammen,
+    // überschreibe existierende und füge neue hinzu
+    const mergedData = [...existingData];
+    const newEntries = [];
+    let updatedCount = 0;
+    
+    importedData.forEach(newEntry => {
+      // Standardisiertes Datum aus dem Import (falls vorhanden)
+      const standardDate = newEntry._standardDate || standardizeDateFormat(newEntry.datum, newEntry.tag);
+      
+      if (standardDate && existingDatesSet.has(standardDate)) {
+        // Wir haben bereits einen Eintrag mit diesem Datum - finden und aktualisieren
+        const existingIndex = existingData.findIndex(item => {
+          const itemStandardDate = standardizeDateFormat(item.datum, item.tag);
+          return itemStandardDate === standardDate;
+        });
+        
+        if (existingIndex !== -1) {
+          // Eintrag mit diesem Datum ersetzen
+          mergedData[existingIndex] = {
+            ...mergedData[existingIndex], // ID und andere Felder beibehalten
+            morgenSys: newEntry.morgenSys,
+            morgenDia: newEntry.morgenDia,
+            morgenPuls: newEntry.morgenPuls,
+            abendSys: newEntry.abendSys,
+            abendDia: newEntry.abendDia,
+            abendPuls: newEntry.abendPuls
+          };
+          updatedCount++;
+        }
+      } else {
+        // Neuer Eintrag, den wir hinzufügen
+        newEntries.push(newEntry);
+        // Das standardisierte Datum zum Set hinzufügen, um Duplikate im Import zu vermeiden
+        if (standardDate) {
+          existingDatesSet.add(standardDate);
+        }
+      }
+    });
+    
+    // Füge alle neuen Einträge hinzu
+    const resultData = [...mergedData, ...newEntries];
+    
     // Nach Datum sortieren und Daten aktualisieren
-    const sortedData = sortDataByDate(existingData);
+    const sortedData = sortDataByDate(resultData);
     setData(sortedData);
     
     // Wenn Kontextdaten importiert wurden, diese auch importieren
@@ -351,7 +425,10 @@ const useBloodPressureData = () => {
     }
     
     // Status-Nachricht anzeigen
-    showStatusMessage(`${importedData.length} Einträge erfolgreich importiert`, 'success');
+    showStatusMessage(
+      `${newEntries.length} neue Einträge importiert, ${updatedCount} Einträge aktualisiert`, 
+      'success'
+    );
     
     return true;
   }, [data, showStatusMessage, analyzeFactorCorrelations]);

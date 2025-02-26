@@ -6,7 +6,10 @@ import { validateBloodPressure, validateForm, getWeekdayFromDate } from '../../u
 const EditEntryForm = ({ entry, onSubmit, onCancel }) => {
   // Datum aus dem Eintrag parsen und formatieren (yyyy-mm-dd für input type="date")
   const parseDate = (dateStr) => {
-    if (dateStr.includes(' ')) {
+    if (!dateStr) return '';
+    
+    // Fall 1: Format "Januar 15" (Standardformat)
+    if (dateStr.includes(' ') && !dateStr.includes('.')) {
       const monthName = dateStr.split(' ')[0];
       const day = dateStr.split(' ')[1];
       
@@ -20,7 +23,42 @@ const EditEntryForm = ({ entry, onSubmit, onCancel }) => {
       const month = months[monthName] || '01';
       return `2025-${month}-${day.padStart(2, '0')}`;
     }
-    return dateStr;
+    
+    // Fall 2: Format "1. Januar" (europäisches Format)
+    if (dateStr.includes('.') && dateStr.includes(' ')) {
+      let day, month;
+      
+      if (dateStr.startsWith(dateStr.match(/\d+/)[0])) {
+        // Format "1. Januar"
+        day = dateStr.match(/\d+/)[0];
+        month = dateStr.split('. ')[1].trim();
+      } else {
+        // Andere Varianten
+        const parts = dateStr.split(' ');
+        month = parts[0];
+        day = parts[1].replace('.', '').trim();
+      }
+      
+      // Monatsnamen in Zahlen umwandeln
+      const months = {
+        'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
+        'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
+        'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+      };
+      
+      const month_num = months[month] || '01';
+      return `2025-${month_num}-${day.padStart(2, '0')}`;
+    }
+    
+    // Fall 3: Bereits im ISO-Format (YYYY-MM-DD)
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateStr;
+    }
+    
+    // Wenn das Format nicht erkannt wird, aktuelles Datum zurückgeben
+    console.warn('Unbekanntes Datumsformat:', dateStr);
+    const today = new Date();
+    return today.toISOString().split('T')[0];
   };
   
   // Initialer State mit den Werten des zu bearbeitenden Eintrags

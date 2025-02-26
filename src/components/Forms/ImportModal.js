@@ -19,9 +19,13 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
       return;
     }
     
-    // Prüfen ob es eine CSV-Datei ist
-    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-      setImportError('Bitte wählen Sie eine CSV-Datei aus.');
+    // Prüfen ob es eine CSV-Datei ist oder die Endung .csv hat
+    const isCSV = file.type === 'text/csv' || 
+                  file.name.toLowerCase().endsWith('.csv') || 
+                  file.name.toLowerCase().endsWith('.txt');
+                  
+    if (!isCSV) {
+      setImportError('Bitte wählen Sie eine CSV- oder Textdatei aus.');
       return;
     }
     
@@ -30,6 +34,12 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
     reader.onload = (e) => {
       try {
         const text = e.target.result;
+        
+        // Sicherstellen, dass wir einen Text haben
+        if (!text || typeof text !== 'string') {
+          throw new Error('Die Datei enthält keinen gültigen Text.');
+        }
+        
         const result = parseCSVData(text);
         const parsedData = result.data;
         setImportData(parsedData);
@@ -50,7 +60,8 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
           setImportInfo(infoMessage);
         }
       } catch (error) {
-        setImportError(error.message);
+        console.error('Fehler beim Parsen der CSV-Datei:', error);
+        setImportError(error.message || 'Fehler beim Parsen der Datei.');
         setImportData(null);
         setImportPreview([]);
       }
@@ -111,7 +122,7 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
                   type="file"
                   id="file-upload"
                   className="hidden"
-                  accept=".csv"
+                  accept=".csv,.txt"
                   onChange={handleFileUpload}
                 />
                 <label 

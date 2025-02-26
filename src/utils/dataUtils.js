@@ -53,62 +53,160 @@ export const prepareDataWithAverages = (data) => {
   };
 };
 
+// Sichere Konvertierung von Zahlen mit Komma zu Punkt
+function safeParseFloat(value) {
+  if (value === undefined || value === null || value === '') {
+    return 0;
+  }
+  
+  // Sicherstellen, dass der Wert ein String ist, bevor replace aufgerufen wird
+  const strValue = String(value).trim();
+  return parseFloat(strValue.replace(',', '.')) || 0;
+}
+
+// Hilfsfunktion, um ein Datum in ein standardisiertes Format zu konvertieren
+// Dies wird für den Vergleich beim Importieren verwendet
+export const standardizeDateFormat = (dateStr, tag) => {
+  // Versuche zuerst, das Datum zu parsen
+  const parsedDate = parseDateFromCSV(dateStr);
+  if (!parsedDate) return null;
+  
+  const { germanMonth, germanDay } = parsedDate;
+  
+  // Standardisierte Form: "Tag-DD-MM", z.B. "Mi-01-01"
+  // Dies ist ein internes Format nur für den Vergleich, nicht für die Anzeige
+  const monthMap = {
+    'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+    'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+    'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+  };
+  
+  const monthNum = monthMap[germanMonth] || '01';
+  const dayNum = germanDay.padStart(2, '0');
+  
+  return `${tag}-${dayNum}-${monthNum}`;
+};
+
 // Parse CSV-Daten für den Import
 export const parseCSVData = (text) => {
   try {
     // Zeilen aufteilen
     const lines = text.split('\n').filter(line => line.trim().length > 0);
     
-    if (lines.length < 3) {
+    if (lines.length < 3) { // Mindestens 2 Header-Zeilen + 1 Datenzeile
       throw new Error('Die CSV-Datei enthält nicht genügend Daten.');
     }
     
-    // Indizes der benötigten Spalten finden
+    // Bei deinem Format haben wir 2 Header-Zeilen
     const headers = lines[0].split(';');
     const subHeaders = lines[1].split(';');
     
-    // Tag und Datum
-    const dayIndex = headers.indexOf('Day');
-    const dateIndex = headers.indexOf('Date');
+    // Finde die Hauptspalten
+    let dayIndex = headers.indexOf('Day');
+    let dateIndex = headers.indexOf('Date');
+    let bpMorningIndex = -1;
+    let bpEveningIndex = -1;
     
-    if (dayIndex === -1 || dateIndex === -1) {
-      throw new Error('Tag- oder Datumspalte wurde nicht gefunden.');
+    // Wenn die Standard-Indizes nicht gefunden werden, manuell suchen
+    if (dayIndex === -1) {
+      for (let i = 0; i < headers.length; i++) {
+        if (headers[i].toLowerCase().includes('day')) {
+          dayIndex = i;
+          break;
+        }
+      }
     }
     
-    // Blutdruckwerte-Indizes finden
-    const bpMorningIndex = headers.indexOf('Blood Pressure M');
-    const bpEveningIndex = headers.indexOf('Blood Pressure E');
-    
-    if (bpMorningIndex === -1 || bpEveningIndex === -1) {
-      throw new Error('Blutdruckdaten wurden nicht gefunden.');
+    if (dateIndex === -1) {
+      for (let i = 0; i < headers.length; i++) {
+        if (headers[i].toLowerCase().includes('date')) {
+          dateIndex = i;
+          break;
+        }
+      }
     }
     
-    // Kontextfaktoren-Indizes finden (optional)
-    const contextFactorIndex = headers.indexOf('Context Factors');
+    // Suche nach den Blutdruck-Spaltengruppen
+    for (let i = 0; i < headers.length; i++) {
+      if (headers[i].toLowerCase().includes('blood pressure m')) {
+        bpMorningIndex = i;
+      } else if (headers[i].toLowerCase().includes('blood pressure e')) {
+        bpEveningIndex = i;
+      }
+    }
+    
+    // Wenn nicht gefunden, verwende Fallback-Annahmen
+    if (dayIndex === -1) dayIndex = 0;
+    if (dateIndex === -1) dateIndex = 1;
+    
+    // Für dein Format wissen wir, dass die Unterspalten Sys, Dia, Pulse sind
+    // Finde die genauen Indizes in der zweiten Header-Zeile
+    let mSysIndex = -1, mDiaIndex = -1, mPulseIndex = -1;
+    let eSysIndex = -1, eDiaIndex = -1, ePulseIndex = -1;
+    
+    // Wenn bpMorningIndex und bpEveningIndex gefunden wurden
+    if (bpMorningIndex !== -1) {
+      // In deinem Format sind die Werte direkt nach "Blood Pressure M"
+      mSysIndex = bpMorningIndex;
+      mDiaIndex = bpMorningIndex + 1;
+      mPulseIndex = bpMorningIndex + 2;
+    } else {
+      // Fallback: Suche nach Sys/Dia/Pulse in den Unterspalten
+      for (let i = 0; i < subHeaders.length; i++) {
+        const header = subHeaders[i].toLowerCase();
+        if (header === 'sys') {
+          mSysIndex = i;
+        } else if (header === 'dia') {
+          mDiaIndex = i;
+        } else if (header === 'pulse' || header === 'puls') {
+          mPulseIndex = i;
+        }
+      }
+    }
+    
+    if (bpEveningIndex !== -1) {
+      // In deinem Format sind die Werte direkt nach "Blood Pressure E"
+      eSysIndex = bpEveningIndex;
+      eDiaIndex = bpEveningIndex + 1;
+      ePulseIndex = bpEveningIndex + 2;
+    } else if (mSysIndex !== -1 && mDiaIndex !== -1 && mPulseIndex !== -1) {
+      // Fallback: Wenn Morning-Indizes gefunden wurden, nutze die nächsten 3 Spalten für Evening
+      eSysIndex = mPulseIndex + 1;
+      eDiaIndex = mPulseIndex + 2;
+      ePulseIndex = mPulseIndex + 3;
+    }
+    
+    console.log(`Erkannte Spalten: 
+      Day = ${dayIndex}, 
+      Date = ${dateIndex}, 
+      Morning: Sys=${mSysIndex}, Dia=${mDiaIndex}, Pulse=${mPulseIndex}, 
+      Evening: Sys=${eSysIndex}, Dia=${eDiaIndex}, Pulse=${ePulseIndex}`);
     
     // Verarbeitung der Datensätze
     const results = [];
     let skippedCount = 0;
     let zeroValuesCount = 0;
     
-    // Kontext-Faktoren für jeden Tag
-    const contextFactors = {};
-    
-    // Ab Zeile 3 (Index 2) beginnen die Datensätze
+    // Start bei Zeile 2 (Index 2), da wir 2 Header-Zeilen haben
     for (let i = 2; i < lines.length; i++) {
       const values = lines[i].split(';');
       
       // Überprüfen, ob die Zeile ausreichend Daten enthält
-      if (values.length <= Math.max(dayIndex, dateIndex, bpMorningIndex + 2, bpEveningIndex + 2)) {
+      if (values.length <= Math.max(dayIndex, dateIndex, mSysIndex, mDiaIndex, mPulseIndex, eSysIndex, eDiaIndex, ePulseIndex)) {
         skippedCount++;
         continue; // Überspringe unvollständige Zeilen
       }
       
       // Tag und Datum extrahieren
-      const day = values[dayIndex];
-      const dateStr = values[dateIndex];
+      const day = values[dayIndex] || '';
+      const dateStr = values[dateIndex] || '';
       
-      // Datum parsen - jetzt mit Unterstützung für verschiedene Formate einschließlich mit Jahr
+      if (!day || !dateStr) {
+        skippedCount++;
+        continue; // Überspringe Zeilen ohne Tag oder Datum
+      }
+      
+      // Datum parsen - speziell für "1. January, 2025" Format
       const parsedDate = parseDateFromCSV(dateStr);
       if (!parsedDate) {
         skippedCount++;
@@ -118,23 +216,22 @@ export const parseCSVData = (text) => {
       const { germanMonth, germanDay } = parsedDate;
       
       // Blutdruckwerte extrahieren
-      // Morgen: Sys, Dia, Pulse
-      let morgenSys = parseFloat(values[bpMorningIndex].replace(',', '.')) || 0;
-      let morgenDia = parseFloat(values[bpMorningIndex + 1].replace(',', '.')) || 0;
-      let morgenPuls = parseFloat(values[bpMorningIndex + 2].replace(',', '.')) || 0;
+      // Verwende direkt die ermittelten Spaltenindizes
+      let morgenSys = mSysIndex !== -1 && mSysIndex < values.length ? safeParseFloat(values[mSysIndex]) : 0;
+      let morgenDia = mDiaIndex !== -1 && mDiaIndex < values.length ? safeParseFloat(values[mDiaIndex]) : 0;
+      let morgenPuls = mPulseIndex !== -1 && mPulseIndex < values.length ? safeParseFloat(values[mPulseIndex]) : 0;
       
-      // Abend: Sys, Dia, Pulse
-      let abendSys = parseFloat(values[bpEveningIndex].replace(',', '.')) || 0;
-      let abendDia = parseFloat(values[bpEveningIndex + 1].replace(',', '.')) || 0;
-      let abendPuls = parseFloat(values[bpEveningIndex + 2].replace(',', '.')) || 0;
+      let abendSys = eSysIndex !== -1 && eSysIndex < values.length ? safeParseFloat(values[eSysIndex]) : 0;
+      let abendDia = eDiaIndex !== -1 && eDiaIndex < values.length ? safeParseFloat(values[eDiaIndex]) : 0;
+      let abendPuls = ePulseIndex !== -1 && ePulseIndex < values.length ? safeParseFloat(values[ePulseIndex]) : 0;
       
-      // Prüfen, ob mindestens ein gültiger Blutdruckwert (>0) vorhanden ist
+      // Prüfen, ob mindestens ein gültiger Blutdruckwert vorhanden ist
       const hasMorningValues = morgenSys > 0 && morgenDia > 0;
       const hasEveningValues = abendSys > 0 && abendDia > 0;
       
       if (!hasMorningValues && !hasEveningValues) {
         skippedCount++;
-        continue; // Überspringe Zeilen ohne Blutdruckwerte
+        continue; // Überspringe Zeilen ohne gültige Blutdruckwerte
       }
       
       // Einzelne Nullwerte zählen
@@ -146,8 +243,18 @@ export const parseCSVData = (text) => {
       // Wochentag kurz formatieren
       let tagKurz = translateDayToShortGerman(day);
       
-      // Formatiertes Datum für die Anzeige im europäischen Format
-      const formattedDate = `${germanDay}. ${germanMonth}`;
+      // WICHTIG: Formatiertes Datum im GLEICHEN FORMAT wie beim Export
+      // Um doppelte Einträge zu vermeiden
+      let formattedDate;
+      
+      // Prüfe, ob im Originaldatumsformat bereits "Januar 1" oder "1. Januar" vorliegt
+      if (dateStr.match(/\d+\.\s*\w+/)) {
+        // Format "1. Januar" beibehalten
+        formattedDate = `${germanDay}. ${germanMonth}`;
+      } else {
+        // Format "Januar 1" verwenden (Standardformat)
+        formattedDate = `${germanMonth} ${germanDay}`;
+      }
       
       // Eintrag erstellen
       const entry = {
@@ -159,44 +266,12 @@ export const parseCSVData = (text) => {
         morgenPuls,
         abendSys,
         abendDia,
-        abendPuls
+        abendPuls,
+        // Standardisiertes Datum hinzufügen für spätere Duplikaterkennung
+        _standardDate: standardizeDateFormat(formattedDate, tagKurz)
       };
       
       results.push(entry);
-      
-      // Kontextfaktoren extrahieren, falls vorhanden
-      if (contextFactorIndex !== -1 && values.length > contextFactorIndex + 5) {
-        const stressValue = parseInt(values[contextFactorIndex]) || 0;
-        const sleepValue = parseInt(values[contextFactorIndex + 1]) || 0;
-        const activityValue = parseInt(values[contextFactorIndex + 2]) || 0;
-        const saltValue = parseInt(values[contextFactorIndex + 3]) || 0;
-        const caffeineValue = parseInt(values[contextFactorIndex + 4]) || 0;
-        const alcoholValue = parseInt(values[contextFactorIndex + 5]) || 0;
-        
-        // Erstellung des ISO-Datums für die Kontextfaktoren (YYYY-MM-DD)
-        const months = {
-          'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
-          'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
-          'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
-        };
-        
-        const monthNum = months[germanMonth];
-        const isoDate = `2025-${monthNum}-${germanDay.padStart(2, '0')}`;
-        
-        // Nur Faktoren speichern, wenn sie gültige Werte haben
-        const factors = {};
-        if (stressValue >= 0) factors.stress = stressValue;
-        if (sleepValue >= 0) factors.sleep = sleepValue;
-        if (activityValue >= 0) factors.activity = activityValue;
-        if (saltValue >= 0) factors.salt = saltValue;
-        if (caffeineValue >= 0) factors.caffeine = caffeineValue;
-        if (alcoholValue >= 0) factors.alcohol = alcoholValue;
-        
-        // Nur speichern, wenn mindestens ein Faktor vorhanden ist
-        if (Object.keys(factors).length > 0) {
-          contextFactors[isoDate] = factors;
-        }
-      }
     }
     
     // Überprüfen, ob Daten gefunden wurden
@@ -206,7 +281,7 @@ export const parseCSVData = (text) => {
     
     return {
       data: results,
-      contextFactors,
+      contextFactors: {}, // Kontext-Faktoren werden hier nicht erfasst
       skippedCount,
       zeroValuesCount
     };
@@ -271,69 +346,131 @@ export const initialData = [
   { id: 7, tag: 'Di', datum: '7. Januar', morgenSys: 132, morgenDia: 65, morgenPuls: 50, abendSys: 132, abendDia: 69, abendPuls: 50 }
 ];
 
-// Hilfsfunktionen für den Import
-
-/**
- * Parst ein Datum aus einem CSV-Datensatz und unterstützt verschiedene Formate
- * @param {string} dateStr - Datum als String z.B. "January 15, 2025" oder "January 15" oder "15. January 2025"
- * @returns {Object|null} - Geparste Datumskomponenten oder null bei Fehler
- */
+// Diese Funktion speziell für das Format "1. January, 2025" optimiert
 function parseDateFromCSV(dateStr) {
-  if (!dateStr) return null;
+  if (!dateStr || typeof dateStr !== 'string') return null;
   
-  // Verschiedene Möglichkeiten, wie das Datum formatiert sein könnte
+  // Für das Format "1. January, 2025"
+  const europeanFullDateRegex = /^(\d{1,2})\.\s*(\w+),?\s*\d{4}$/;
+  const match = dateStr.match(europeanFullDateRegex);
   
-  // Versuch 1: "Month Day, Year" Format (z.B. "January 15, 2025")
-  const americanDateRegex = /^(\w+)\s+(\d{1,2})(?:,\s*(\d{4}))?$/;
-  const americanDateMatch = dateStr.match(americanDateRegex);
-  
-  if (americanDateMatch) {
-    const englishMonth = americanDateMatch[1];
-    const day = americanDateMatch[2];
-    // const year = americanDateMatch[3] || '2025'; // Standardmäßig 2025, wenn kein Jahr angegeben
+  if (match) {
+    const day = match[1];
+    const month = match[2];
     
-    // Englische Monatsnamen in deutsche umwandeln
+    // Englische und deutsche Monatsnamen in deutsche umwandeln
     const monthTranslation = {
       'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
       'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
-      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember'
-    };
-    
-    const germanMonth = monthTranslation[englishMonth] || englishMonth;
-    return { germanMonth, germanDay: day };
-  }
-  
-  // Versuch 2: "Day. Month Year" Format (z.B. "15. January 2025" oder "15. Januar")
-  const europeanDateRegex = /^(\d{1,2})\.?\s+(\w+)(?:\s+(\d{4}))?$/;
-  const europeanDateMatch = dateStr.match(europeanDateRegex);
-  
-  if (europeanDateMatch) {
-    const day = europeanDateMatch[1];
-    const month = europeanDateMatch[2];
-    // const year = europeanDateMatch[3] || '2025'; // Standardmäßig 2025, wenn kein Jahr angegeben
-    
-    // Englische Monatsnamen in deutsche umwandeln
-    const monthTranslation = {
-      'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
-      'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
-      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember'
+      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
+      'Januar': 'Januar', 'Februar': 'Februar', 'März': 'März', 'April': 'April',
+      'Mai': 'Mai', 'Juni': 'Juni', 'Juli': 'Juli', 'August': 'August',
+      'September': 'September', 'Oktober': 'Oktober', 'November': 'November', 'Dezember': 'Dezember'
     };
     
     const germanMonth = monthTranslation[month] || month;
     return { germanMonth, germanDay: day };
   }
   
-  // Versuch 3: Direktes deutsches Format "Januar 15"
-  const germanAmericanDateRegex = /^(\w+)\s+(\d{1,2})$/;
-  const germanAmericanDateMatch = dateStr.match(germanAmericanDateRegex);
+  // Wenn das spezielle Format nicht passt, versuche die allgemeine Funktion
+  return generalParseDateFromCSV(dateStr);
+}
+
+// Allgemeine Datumsparser-Funktion als Fallback
+function generalParseDateFromCSV(dateStr) {
+  // Leere Strings, undefined oder null abfangen
+  if (!dateStr.trim()) return null;
   
-  if (germanAmericanDateMatch) {
-    const germanMonth = germanAmericanDateMatch[1];
-    const germanDay = germanAmericanDateMatch[2];
-    return { germanMonth, germanDay };
+  // Format mit Wochentag entfernen, falls vorhanden
+  if (dateStr.includes(',')) {
+    dateStr = dateStr.split(',')[1].trim();
   }
   
-  // Weitere Formate könnten hier hinzugefügt werden
+  // Formatkorrektur für Daten mit Leerzeichen und Punkt
+  if (dateStr.match(/\d+\.\s+\w+/)) {
+    dateStr = dateStr.replace(/(\d+)\.(\s+)(\w+)/, '$1.$3');
+  }
+  
+  // Fall 1: "Month Day" Format (z.B. "Januar 1" oder "January 1")
+  const americanDateRegex = /^(\w+)\s+(\d{1,2})(?:\s+(\d{4}))?$/;
+  const americanDateMatch = dateStr.match(americanDateRegex);
+  
+  if (americanDateMatch) {
+    const month = americanDateMatch[1];
+    const day = americanDateMatch[2];
+    
+    // Englische und deutsche Monatsnamen in deutsche umwandeln
+    const monthTranslation = {
+      'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
+      'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
+      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
+      'Januar': 'Januar', 'Februar': 'Februar', 'März': 'März', 'April': 'April',
+      'Mai': 'Mai', 'Juni': 'Juni', 'Juli': 'Juli', 'August': 'August',
+      'September': 'September', 'Oktober': 'Oktober', 'November': 'November', 'Dezember': 'Dezember'
+    };
+    
+    const germanMonth = monthTranslation[month] || month;
+    return { germanMonth, germanDay: day };
+  }
+  
+  // Fall 2: "Day. Month" Format (z.B. "1. Januar" oder "1. January")
+  const europeanDateRegex = /^(\d{1,2})[\.\s]+(\w+)(?:\s+(\d{4}))?$/;
+  const europeanDateMatch = dateStr.match(europeanDateRegex);
+  
+  if (europeanDateMatch) {
+    const day = europeanDateMatch[1];
+    const month = europeanDateMatch[2];
+    
+    // Englische und deutsche Monatsnamen in deutsche umwandeln
+    const monthTranslation = {
+      'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
+      'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
+      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
+      'Januar': 'Januar', 'Februar': 'Februar', 'März': 'März', 'April': 'April',
+      'Mai': 'Mai', 'Juni': 'Juni', 'Juli': 'Juli', 'August': 'August',
+      'September': 'September', 'Oktober': 'Oktober', 'November': 'November', 'Dezember': 'Dezember'
+    };
+    
+    const germanMonth = monthTranslation[month] || month;
+    return { germanMonth, germanDay: day };
+  }
+  
+  // Fall 3: "DD.MM.YYYY" Format
+  const shortDateRegex = /^(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?$/;
+  const shortDateMatch = dateStr.match(shortDateRegex);
+  
+  if (shortDateMatch) {
+    const day = shortDateMatch[1];
+    const monthNum = parseInt(shortDateMatch[2]);
+    
+    // Monate in deutsche Namen umwandeln
+    const months = [
+      'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+      'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+    ];
+    
+    const germanMonth = months[monthNum - 1] || 'Januar';
+    return { germanMonth, germanDay: day };
+  }
+  
+  // Fall 4: ISO-Format "YYYY-MM-DD"
+  const isoDateRegex = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const isoDateMatch = dateStr.match(isoDateRegex);
+  
+  if (isoDateMatch) {
+    const year = isoDateMatch[1];
+    const month = parseInt(isoDateMatch[2]);
+    const day = isoDateMatch[3];
+    
+    // Monate in deutsche Namen umwandeln
+    const months = [
+      'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+      'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+    ];
+    
+    const germanMonth = months[month - 1] || 'Januar';
+    return { germanMonth, germanDay: day };
+  }
   
   return null;
 }
@@ -344,24 +481,40 @@ function parseDateFromCSV(dateStr) {
  * @returns {string} - Deutsche Kurzform (Mo, Di, etc.)
  */
 function translateDayToShortGerman(day) {
-  if (!day) return '';
+  if (!day || typeof day !== 'string') return 'Mo'; // Fallback zu Montag
   
-  const lowercaseDay = day.toLowerCase();
+  const lowercaseDay = day.toLowerCase().trim();
   
-  // Englische Wochentage
-  if (lowercaseDay.includes('monday') || lowercaseDay.includes('montag')) return 'Mo';
-  if (lowercaseDay.includes('tuesday') || lowercaseDay.includes('dienstag')) return 'Di';
-  if (lowercaseDay.includes('wednesday') || lowercaseDay.includes('mittwoch')) return 'Mi';
-  if (lowercaseDay.includes('thursday') || lowercaseDay.includes('donnerstag')) return 'Do';
-  if (lowercaseDay.includes('friday') || lowercaseDay.includes('freitag')) return 'Fr';
-  if (lowercaseDay.includes('saturday') || lowercaseDay.includes('samstag')) return 'Sa';
-  if (lowercaseDay.includes('sunday') || lowercaseDay.includes('sonntag')) return 'So';
+  // Englische und deutsche Wochentage
+  const dayMap = {
+    'monday': 'Mo', 'montag': 'Mo',
+    'tuesday': 'Di', 'dienstag': 'Di',
+    'wednesday': 'Mi', 'mittwoch': 'Mi',
+    'thursday': 'Do', 'donnerstag': 'Do',
+    'friday': 'Fr', 'freitag': 'Fr',
+    'saturday': 'Sa', 'samstag': 'Sa',
+    'sunday': 'So', 'sonntag': 'So'
+  };
+  
+  // Direkter Match mit dem dayMap
+  for (const [key, value] of Object.entries(dayMap)) {
+    if (lowercaseDay.includes(key)) return value;
+  }
   
   // Wenn bereits deutsche Kurzform, behalten wir diese bei
   if (['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so'].includes(lowercaseDay)) {
     return day.charAt(0).toUpperCase() + day.charAt(1).toLowerCase();
   }
   
-  // Fallback: Die ersten 2 Zeichen
-  return day.slice(0, 2);
+  // Fallback: Die ersten 2 Zeichen oder feste Zuordnung basierend auf typischen Zahlen
+  if (lowercaseDay === '1' || lowercaseDay === '01') return 'Mo';
+  if (lowercaseDay === '2' || lowercaseDay === '02') return 'Di';
+  if (lowercaseDay === '3' || lowercaseDay === '03') return 'Mi';
+  if (lowercaseDay === '4' || lowercaseDay === '04') return 'Do';
+  if (lowercaseDay === '5' || lowercaseDay === '05') return 'Fr';
+  if (lowercaseDay === '6' || lowercaseDay === '06') return 'Sa';
+  if (lowercaseDay === '7' || lowercaseDay === '07' || lowercaseDay === '0') return 'So';
+  
+  // Letzte Möglichkeit: Die ersten 2 Zeichen oder "Mo" als Default
+  return day.length >= 2 ? day.slice(0, 2) : 'Mo';
 }
