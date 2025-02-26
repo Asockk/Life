@@ -5,7 +5,7 @@
   "main": "electron.js",
   "homepage": "./",
   "description": "Blutdruck Tracker Application",
-  "author": "Your Name",
+  "author": "Your Name <your-email@example.com>",
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
@@ -93,7 +93,8 @@
           "arch": ["x64"]
         }
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "maintainer": "Your Name <your-email@example.com>"
     },
     "files": [
       "build/**/*",
