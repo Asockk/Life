@@ -2,6 +2,10 @@
   "name": "blutdruck-tracker",
   "version": "0.1.0",
   "private": true,
+  "main": "electron.js",
+  "homepage": "./",
+  "description": "Blutdruck Tracker Application",
+  "author": "Your Name",
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
@@ -21,7 +25,14 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "electron": "electron .",
+    "electron-dev": "ELECTRON_START_URL=http://localhost:3000 concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-pack": "electron-builder build --mac --win --linux",
+    "electron-pack-mac": "electron-builder build --mac",
+    "electron-pack-win": "electron-builder build --win",
+    "electron-pack-linux": "electron-builder build --linux",
+    "postinstall": "electron-builder install-app-deps"
   },
   "eslintConfig": {
     "extends": [
@@ -42,6 +53,60 @@
     ]
   },
   "devDependencies": {
-    "tailwindcss": "^3.3.2"
+    "concurrently": "^8.2.2",
+    "electron": "^25.3.1",
+    "electron-builder": "^24.4.0",
+    "tailwindcss": "^3.3.2",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.blutdruck.tracker",
+    "productName": "Blutdruck Tracker",
+    "copyright": "Copyright © 2024 Your Name",
+    "npmRebuild": true,
+    "nodeVersion": "18.16.0",
+    "mac": {
+      "category": "public.app-category.medical",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Utility"
+    },
+    "files": [
+      "build/**/*",
+      "electron.js",
+      {
+        "from": "build",
+        "to": "build",
+        "filter": ["**/*"]
+      }
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    }
   }
 }
