@@ -1,16 +1,30 @@
 // hooks/useBloodPressureData.js
-// Verbesserte Version mit integrierter Kontextfaktor-Verwaltung
-import { useState, useCallback, useMemo } from 'react';
-import { initialData, prepareDataWithMovingAverages, prepareDataWithAverages, sortDataByDate, standardizeDateFormat } from '../utils/dataUtils';
+// Verbesserte Version mit integrierter Kontextfaktor-Verwaltung und lokaler Datenpersistenz
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { prepareDataWithMovingAverages, prepareDataWithAverages, sortDataByDate, standardizeDateFormat } from '../utils/dataUtils';
 import { getBloodPressureCategory, calculateAverage } from '../utils/bloodPressureUtils';
 import { validateBloodPressure, validateForm, formatDateForDisplay } from '../utils/validationUtils';
 import { useDialog } from '../contexts/DialogContext';
 
+// Importieren der neuen Storage-Service-Funktionen
+import { 
+  saveMeasurements,
+  loadMeasurements,
+  saveContextFactors,
+  loadContextFactors,
+  saveSetting,
+  loadSetting
+} from '../services/storageService';
+
 const useBloodPressureData = () => {
   // State für die Daten
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState([]);
   const [viewType, setViewType] = useState('morgen'); // 'morgen' oder 'abend'
   const [statusMessage, setStatusMessage] = useState({ text: '', type: '' });
+  
+  // State für Datenbereitschaft (initial loading)
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [savingInProgress, setSavingInProgress] = useState(false);
 
   // Dialog-Kontext für Bestätigungsdialoge
   const { openConfirmDialog } = useDialog() || {};
@@ -23,6 +37,107 @@ const useBloodPressureData = () => {
   
   // State für den angezeigten Bericht
   const [showReport, setShowReport] = useState(false);
+  
+  // ======================================================================
+  // Initialisierung & Laden der gespeicherten Daten beim ersten Rendern
+  // ======================================================================
+  useEffect(() => {
+    async function initializeData() {
+      try {
+        // Messungen laden
+        const storedData = await loadMeasurements();
+        if (storedData && storedData.length > 0) {
+          setData(storedData);
+          console.log(`${storedData.length} Messungen geladen`);
+        } else {
+          // Fallback: Die initialData als Beispieldaten verwenden
+          setData([]);
+          console.log('Keine gespeicherten Messungen gefunden.');
+        }
+        
+        // Kontextfaktoren laden
+        const storedContextFactors = await loadContextFactors();
+        if (storedContextFactors && Object.keys(storedContextFactors).length > 0) {
+          setContextFactors(storedContextFactors);
+          console.log(`Kontextfaktoren für ${Object.keys(storedContextFactors).length} Tage geladen`);
+        }
+        
+        // Einstellungen laden (z.B. viewType)
+        const savedViewType = await loadSetting('viewType', 'morgen');
+        setViewType(savedViewType);
+        
+        // Markieren dass Daten geladen sind
+        setDataLoaded(true);
+      } catch (error) {
+        console.error('Fehler beim Initialisieren der Daten:', error);
+        setStatusMessage({
+          text: 'Fehler beim Laden der gespeicherten Daten',
+          type: 'error'
+        });
+        // Trotzdem als geladen markieren
+        setDataLoaded(true);
+      }
+    }
+    
+    initializeData();
+  }, []);
+  
+  // Speichern von Änderungen in der Datenbank
+  useEffect(() => {
+    // Nicht beim ersten Laden speichern
+    if (!dataLoaded || savingInProgress) return;
+    
+    async function saveDataChanges() {
+      setSavingInProgress(true);
+      try {
+        await saveMeasurements(data);
+        console.log(`${data.length} Messungen gespeichert`);
+        setSavingInProgress(false);
+      } catch (error) {
+        console.error('Fehler beim Speichern der Messungen:', error);
+        setSavingInProgress(false);
+      }
+    }
+    
+    saveDataChanges();
+  }, [data, dataLoaded]);
+  
+  // Speichern von Änderungen bei Kontextfaktoren
+  useEffect(() => {
+    // Nicht beim ersten Laden speichern
+    if (!dataLoaded || savingInProgress) return;
+    
+    async function saveContextChanges() {
+      setSavingInProgress(true);
+      try {
+        await saveContextFactors(contextFactors);
+        console.log('Kontextfaktoren gespeichert');
+        setSavingInProgress(false);
+      } catch (error) {
+        console.error('Fehler beim Speichern der Kontextfaktoren:', error);
+        setSavingInProgress(false);
+      }
+    }
+    
+    saveContextChanges();
+  }, [contextFactors, dataLoaded]);
+  
+  // Speichern der viewType-Einstellung
+  useEffect(() => {
+    // Nicht beim ersten Laden speichern
+    if (!dataLoaded) return;
+    
+    async function saveViewTypeSettings() {
+      try {
+        await saveSetting('viewType', viewType);
+        console.log(`Ansichtstyp "${viewType}" gespeichert`);
+      } catch (error) {
+        console.error('Fehler beim Speichern der Ansicht:', error);
+      }
+    }
+    
+    saveViewTypeSettings();
+  }, [viewType, dataLoaded]);
   
   // Funktion: Statusnachricht anzeigen - VERBESSERTE VERSION
   const showStatusMessage = useCallback((text, type) => {
@@ -71,10 +186,10 @@ const useBloodPressureData = () => {
     const diaValues = data.filter(d => d[diaField] > 0).map(d => d[diaField]);
     
     return {
-      sysMin: Math.min(...sysValues),
-      sysMax: Math.max(...sysValues),
-      diaMin: Math.min(...diaValues),
-      diaMax: Math.max(...diaValues),
+      sysMin: sysValues.length > 0 ? Math.min(...sysValues) : 0,
+      sysMax: sysValues.length > 0 ? Math.max(...sysValues) : 0,
+      diaMin: diaValues.length > 0 ? Math.min(...diaValues) : 0,
+      diaMax: diaValues.length > 0 ? Math.max(...diaValues) : 0,
     };
   }, [data, viewType]);
 
@@ -488,6 +603,7 @@ const useBloodPressureData = () => {
     // Status
     statusMessage,
     showStatusMessage,
+    dataLoaded,
     
     // CRUD Operationen
     addEntry,

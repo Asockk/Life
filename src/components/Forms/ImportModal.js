@@ -1,8 +1,11 @@
 // components/Forms/ImportModal.js
 import React, { useState } from 'react';
-import { Check, X, FileText, Download, Upload } from 'lucide-react';
+import { Check, X, FileText, Download, Upload, Save, Trash2 } from 'lucide-react';
 import { parseCSVData } from '../../utils/dataUtils';
 import { exportToCSV } from '../../utils/csvExportUtils';
+
+// Import der neuen Storage-Service Funktionen für erweiterte Export/Import
+import { exportAllData, importAllData, clearAllData } from '../../services/storageService';
 
 // Hilfsfunktion zum Konvertieren von englischen zu deutschen Monatsnamen
 const convertToGermanDate = (entry) => {
@@ -73,16 +76,34 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
   const [importError, setImportError] = useState('');
   const [importPreview, setImportPreview] = useState([]);
   const [importInfo, setImportInfo] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [importMethod, setImportMethod] = useState('csv'); // 'csv' oder 'backup'
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     setImportError('');
     setImportInfo('');
+    setImportData(null);
+    setImportPreview([]);
     
     if (!file) {
       return;
     }
     
+    setIsLoading(true);
+    
+    // Unterschiedliche Behandlung basierend auf Dateityp
+    if (importMethod === 'backup' || file.name.toLowerCase().endsWith('.json')) {
+      // JSON Backup einlesen
+      handleBackupImport(file);
+    } else {
+      // Standard CSV Import
+      handleCsvImport(file);
+    }
+  };
+  
+  const handleCsvImport = (file) => {
     // Prüfen ob es eine CSV-Datei ist oder die Endung .csv hat
     const isCSV = file.type === 'text/csv' || 
                   file.name.toLowerCase().endsWith('.csv') || 
@@ -90,6 +111,7 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
                   
     if (!isCSV) {
       setImportError('Bitte wählen Sie eine CSV- oder Textdatei aus.');
+      setIsLoading(false);
       return;
     }
     
@@ -126,41 +148,171 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
         if (infoMessage) {
           setImportInfo(infoMessage);
         }
+        
+        setIsLoading(false);
       } catch (error) {
         console.error('Fehler beim Parsen der CSV-Datei:', error);
         setImportError(error.message || 'Fehler beim Parsen der Datei.');
         setImportData(null);
         setImportPreview([]);
+        setIsLoading(false);
       }
     };
     
     reader.onerror = () => {
       setImportError('Fehler beim Lesen der Datei.');
+      setIsLoading(false);
     };
     
     reader.readAsText(file);
   };
   
-  const confirmImport = () => {
-    if (!importData || importData.length === 0) {
+  const handleBackupImport = (file) => {
+    // Prüfen ob es eine JSON-Datei ist
+    const isJSON = file.type === 'application/json' || 
+                   file.name.toLowerCase().endsWith('.json');
+                  
+    if (!isJSON) {
+      setImportError('Bitte wählen Sie eine JSON-Backup-Datei aus.');
+      setIsLoading(false);
+      return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      try {
+        const text = e.target.result;
+        
+        // Sicherstellen, dass wir einen Text haben
+        if (!text || typeof text !== 'string') {
+          throw new Error('Die Datei enthält keinen gültigen Text.');
+        }
+        
+        // JSON parsen um Vorschau anzuzeigen
+        const backupData = JSON.parse(text);
+        
+        if (!backupData.measurements || !Array.isArray(backupData.measurements)) {
+          throw new Error('Ungültiges Backup-Format: Messungen fehlen oder haben falsches Format');
+        }
+        
+        // Speichere für späteren Import
+        setImportData(text);
+        
+        // Vorschau erstellen
+        setImportPreview(backupData.measurements.slice(0, 5));
+        
+        // Info-Nachricht erstellen
+        setImportInfo(`Backup vom ${new Date(backupData.exportDate).toLocaleString()} mit ${backupData.measurements.length} Messungen und ${Object.keys(backupData.contextFactors || {}).length} Kontextfaktoren.`);
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Fehler beim Parsen der Backup-Datei:', error);
+        setImportError(error.message || 'Fehler beim Parsen der Backup-Datei.');
+        setImportData(null);
+        setImportPreview([]);
+        setIsLoading(false);
+      }
+    };
+    
+    reader.onerror = () => {
+      setImportError('Fehler beim Lesen der Datei.');
+      setIsLoading(false);
+    };
+    
+    reader.readAsText(file);
+  };
+  
+  const confirmImport = async () => {
+    if (!importData) {
       setImportError('Keine Daten zum Importieren vorhanden.');
       return;
     }
     
-    // Importieren der Daten
-    if (onImport(importData)) {
-      onClose();
+    setIsLoading(true);
+    
+    try {
+      if (importMethod === 'backup' || typeof importData === 'string') {
+        // Bei Backup-Import die neue Funktion verwenden
+        const result = await importAllData(importData);
+        
+        if (result.success) {
+          onClose(); // Schließe das Modal
+          // Die App wird die Daten neu laden
+        } else {
+          setImportError('Fehler beim Importieren der Backup-Datei.');
+        }
+      } else {
+        // Bei CSV-Import die herkömmliche Funktion verwenden
+        if (onImport(importData)) {
+          onClose();
+        } else {
+          setImportError('Fehler beim Importieren der Daten.');
+        }
+      }
+    } catch (error) {
+      console.error('Fehler beim Import:', error);
+      setImportError(error.message || 'Import fehlgeschlagen.');
+    } finally {
+      setIsLoading(false);
     }
   };
   
-  // Funktion zum Export der aktuellen Daten
-  const handleExportData = () => {
+  // Funktion für neuen JSON-Export
+  const handleBackupExport = async () => {
+    setIsLoading(true);
+    
+    try {
+      const filename = await exportAllData();
+      setImportInfo(`Backup wurde erfolgreich erstellt: ${filename}`);
+    } catch (error) {
+      console.error('Fehler beim Erstellen des Backups:', error);
+      setImportError('Fehler beim Erstellen des Backups: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Funktion zum Export der aktuellen Daten als CSV
+  const handleExportCSV = () => {
     if (!data || data.length === 0) {
       setImportError('Keine Daten zum Exportieren vorhanden.');
       return;
     }
     
-    exportToCSV(data, contextFactors);
+    try {
+      const filename = exportToCSV(data, contextFactors);
+      setImportInfo(`CSV-Export wurde erfolgreich erstellt: ${filename}`);
+    } catch (error) {
+      console.error('Fehler beim CSV-Export:', error);
+      setImportError('Fehler beim Exportieren der CSV-Datei: ' + error.message);
+    }
+  };
+  
+  // Funktion zum Löschen aller Daten
+  const handleClearAllData = async () => {
+    if (!showDeleteConfirm) {
+      setShowDeleteConfirm(true);
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      await clearAllData();
+      setImportInfo('Alle Daten wurden erfolgreich gelöscht. Die App wird neu geladen.');
+      
+      // Kurze Verzögerung bevor die Seite neu geladen wird
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Fehler beim Löschen der Daten:', error);
+      setImportError('Fehler beim Löschen der Daten: ' + error.message);
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -171,66 +323,168 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
+            disabled={isLoading}
           >
             <X size={20} />
           </button>
         </div>
         
         <div className="flex-grow overflow-y-auto">
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
-            <div className="flex-1 min-w-[280px]">
-              <p className="text-sm text-gray-600 mb-4">
-                <strong>Daten importieren:</strong> Wählen Sie eine CSV-Datei mit Blutdruckdaten aus.
-                Das Format sollte Spalten für Tag, Datum, und Blutdruckwerte enthalten.
-              </p>
-              
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  id="file-upload"
-                  className="hidden"
-                  accept=".csv,.txt"
-                  onChange={handleFileUpload}
-                />
-                <label 
-                  htmlFor="file-upload"
-                  className="cursor-pointer flex flex-col items-center"
-                >
-                  <Upload size={40} className="text-blue-500 mb-2" />
-                  <span className="font-medium text-blue-500">CSV-Datei auswählen</span>
-                  <span className="text-xs text-gray-500 mt-1">oder hierher ziehen</span>
-                </label>
-              </div>
-            </div>
-            
-            <div className="flex-1 min-w-[280px]">
-              <p className="text-sm text-gray-600 mb-4">
-                <strong>Daten exportieren:</strong> Laden Sie Ihre aktuellen Blutdruckdaten als CSV-Datei
-                herunter, um sie zu sichern oder in anderen Programmen zu verwenden.
-              </p>
-              
-              <div className="border-2 border-gray-300 rounded-lg p-6 text-center">
-                <button
-                  onClick={handleExportData}
-                  className="cursor-pointer flex flex-col items-center w-full"
-                >
-                  <Download size={40} className="text-green-500 mb-2" />
-                  <span className="font-medium text-green-500">Daten als CSV exportieren</span>
-                  <span className="text-xs text-gray-500 mt-1">Enthält alle Messungen und Kontextfaktoren</span>
-                </button>
-              </div>
-            </div>
+          {/* Tabs für Import-Methode */}
+          <div className="flex border-b mb-4">
+            <button
+              className={`px-4 py-2 ${importMethod === 'csv' 
+                ? 'border-b-2 border-blue-500 text-blue-600' 
+                : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setImportMethod('csv')}
+            >
+              CSV Import/Export
+            </button>
+            <button
+              className={`px-4 py-2 ${importMethod === 'backup' 
+                ? 'border-b-2 border-blue-500 text-blue-600' 
+                : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setImportMethod('backup')}
+            >
+              Backup & Wiederherstellung
+            </button>
           </div>
+        
+          {importMethod === 'csv' ? (
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="flex-1 min-w-[280px]">
+                <p className="text-sm text-gray-600 mb-4">
+                  <strong>Daten importieren:</strong> Wählen Sie eine CSV-Datei mit Blutdruckdaten aus.
+                  Das Format sollte Spalten für Tag, Datum, und Blutdruckwerte enthalten.
+                </p>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    id="file-upload"
+                    className="hidden"
+                    accept=".csv,.txt"
+                    onChange={handleFileUpload}
+                    disabled={isLoading}
+                  />
+                  <label 
+                    htmlFor="file-upload"
+                    className={`cursor-pointer flex flex-col items-center ${isLoading ? 'opacity-50' : ''}`}
+                  >
+                    <Upload size={40} className="text-blue-500 mb-2" />
+                    <span className="font-medium text-blue-500">CSV-Datei auswählen</span>
+                    <span className="text-xs text-gray-500 mt-1">oder hierher ziehen</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div className="flex-1 min-w-[280px]">
+                <p className="text-sm text-gray-600 mb-4">
+                  <strong>Daten exportieren:</strong> Laden Sie Ihre aktuellen Blutdruckdaten als CSV-Datei
+                  herunter, um sie zu sichern oder in anderen Programmen zu verwenden.
+                </p>
+                
+                <div className="border-2 border-gray-300 rounded-lg p-6 text-center">
+                  <button
+                    onClick={handleExportCSV}
+                    className={`cursor-pointer flex flex-col items-center w-full ${isLoading ? 'opacity-50' : ''}`}
+                    disabled={isLoading}
+                  >
+                    <Download size={40} className="text-green-500 mb-2" />
+                    <span className="font-medium text-green-500">Daten als CSV exportieren</span>
+                    <span className="text-xs text-gray-500 mt-1">Enthält alle Messungen und Kontextfaktoren</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="flex-1 min-w-[280px]">
+                <p className="text-sm text-gray-600 mb-4">
+                  <strong>Backup wiederherstellen:</strong> Wählen Sie eine zuvor erstellte Backup-Datei, 
+                  um Ihre Daten wiederherzustellen oder auf ein anderes Gerät zu übertragen.
+                </p>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    id="backup-upload"
+                    className="hidden"
+                    accept=".json"
+                    onChange={handleFileUpload}
+                    disabled={isLoading}
+                  />
+                  <label 
+                    htmlFor="backup-upload"
+                    className={`cursor-pointer flex flex-col items-center ${isLoading ? 'opacity-50' : ''}`}
+                  >
+                    <Upload size={40} className="text-blue-500 mb-2" />
+                    <span className="font-medium text-blue-500">Backup-Datei auswählen</span>
+                    <span className="text-xs text-gray-500 mt-1">.json Format</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div className="flex-1 min-w-[280px]">
+                <p className="text-sm text-gray-600 mb-4">
+                  <strong>Vollständiges Backup erstellen:</strong> Sichern Sie alle Ihre Daten 
+                  (Messungen, Kontextfaktoren, Einstellungen) in einer einzigen Datei.
+                </p>
+                
+                <div className="border-2 border-gray-300 rounded-lg p-6 text-center">
+                  <button
+                    onClick={handleBackupExport}
+                    className={`cursor-pointer flex flex-col items-center w-full ${isLoading ? 'opacity-50' : ''}`}
+                    disabled={isLoading}
+                  >
+                    <Save size={40} className="text-green-500 mb-2" />
+                    <span className="font-medium text-green-500">Backup erstellen</span>
+                    <span className="text-xs text-gray-500 mt-1">Exportiert alle Daten als JSON-Datei</span>
+                  </button>
+                </div>
+                
+                {/* Lösch-Funktion */}
+                <div className="mt-4 border-t pt-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    <strong>Alle Daten löschen:</strong> Entfernt alle gespeicherten Daten und setzt die App zurück.
+                  </p>
+                  
+                  <button
+                    onClick={handleClearAllData}
+                    className={`w-full flex items-center justify-center py-2 px-4 rounded-md ${
+                      showDeleteConfirm 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    disabled={isLoading}
+                  >
+                    <Trash2 size={16} className="mr-2" />
+                    {showDeleteConfirm ? 'Wirklich alle Daten löschen?' : 'Daten zurücksetzen'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           
           {importError && (
-            <div className="mt-3 text-sm text-red-600">
+            <div className="mt-3 text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
               Fehler: {importError}
             </div>
           )}
           
           {importInfo && (
-            <div className="mt-3 text-sm text-blue-600">
+            <div className="mt-3 text-sm text-blue-600 bg-blue-50 p-3 rounded-md border border-blue-200">
               Info: {importInfo}
+            </div>
+          )}
+          
+          {isLoading && (
+            <div className="mt-3 text-sm text-gray-600 flex items-center justify-center p-4">
+              <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Bitte warten...
             </div>
           )}
           
@@ -266,10 +520,16 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
                     ))}
                   </tbody>
                 </table>
-                {importData && importData.length > importPreview.length && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    ...und {importData.length - importPreview.length} weitere Einträge
-                  </p>
+                {importData && (
+                  Array.isArray(importData) && importData.length > importPreview.length ? (
+                    <p className="text-xs text-gray-500 mt-2">
+                      ...und {importData.length - importPreview.length} weitere Einträge
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Vorschau der ersten 5 Einträge
+                    </p>
+                  )
                 )}
               </div>
             </div>
@@ -277,12 +537,13 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
         </div>
         
         {/* Buttons am unteren Rand fixiert */}
-        {importData && importData.length > 0 && (
+        {importData && (
           <div className="sticky bottom-0 bg-white pt-4 border-t border-gray-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
             <button
               type="button"
               onClick={onClose}
               className="w-full sm:w-auto bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+              disabled={isLoading}
             >
               Abbrechen
             </button>
@@ -290,6 +551,7 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
               type="button"
               onClick={confirmImport}
               className="w-full sm:w-auto bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none flex items-center justify-center"
+              disabled={isLoading}
             >
               <Check size={16} className="mr-2" />
               Importieren
