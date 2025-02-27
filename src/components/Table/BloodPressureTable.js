@@ -1,6 +1,6 @@
 // components/Table/BloodPressureTable.js
 import React, { useState, useEffect } from 'react';
-import { Edit, Trash, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, Trash, ChevronLeft, ChevronRight, Clock, Calendar } from 'lucide-react';
 import { getBloodPressureCategory, formatTableValue } from '../../utils/bloodPressureUtils';
 
 const BloodPressureTable = ({ data, onEdit, onDelete }) => {
@@ -146,9 +146,9 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
   
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Ihre Blutdruck-Einträge</h2>
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+        <h2 className="text-lg font-semibold mb-2 sm:mb-0">Ihre Blutdruck-Einträge</h2>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <button 
             onClick={toggleSortDirection}
             className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition duration-200 flex items-center"
@@ -161,7 +161,8 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
         </div>
       </div>
       
-      <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Desktop Tabelle - Nur auf größeren Bildschirmen anzeigen */}
+      <div className="hidden md:block overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -234,8 +235,94 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Mobile Kartenansicht - Nur auf kleinen Bildschirmen anzeigen */}
+      <div className="md:hidden">
+        <div className="space-y-3">
+          {currentData.map((entry) => {
+            const morgenBP = entry.morgenSys > 0 && entry.morgenDia > 0 
+              ? getBloodPressureCategory(entry.morgenSys, entry.morgenDia) 
+              : { category: "Unbekannt", color: "#AAAAAA" };
+            
+            const abendBP = entry.abendSys > 0 && entry.abendDia > 0 
+              ? getBloodPressureCategory(entry.abendSys, entry.abendDia)
+              : { category: "Unbekannt", color: "#AAAAAA" };
+            
+            return (
+              <div key={entry.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative">
+                {/* Datumszeile */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <Calendar size={16} className="text-gray-500" />
+                    <span className="text-sm font-medium">{entry.tag}, {entry.datum}</span>
+                  </div>
+                  
+                  {/* Aktionsbuttons */}
+                  <div className="flex space-x-3">
+                    <button 
+                      onClick={() => onEdit(entry)}
+                      className="text-blue-600 p-1 hover:bg-blue-50 rounded"
+                      title="Bearbeiten"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button 
+                      onClick={() => onDelete(entry.id)}
+                      className="text-red-600 p-1 hover:bg-red-50 rounded"
+                      title="Löschen"
+                    >
+                      <Trash size={16} />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Werte Karten */}
+                <div className="grid grid-cols-2 gap-2 mb-1">
+                  {/* Morgen-Werte */}
+                  <div className="bg-gray-50 p-2 rounded">
+                    <div className="flex items-center mb-1">
+                      <Clock size={14} className="text-indigo-500 mr-1" />
+                      <span className="text-xs font-medium text-gray-700">Morgen</span>
+                    </div>
+                    
+                    {entry.morgenSys > 0 && entry.morgenDia > 0 ? (
+                      <div 
+                        className="px-2 py-1 text-center rounded text-xs font-medium w-full"
+                        style={getReadableStyle(morgenBP)}
+                      >
+                        {formatTableValue(entry.morgenSys, entry.morgenDia, entry.morgenPuls || '-')}
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-400 text-xs">-</div>
+                    )}
+                  </div>
+                  
+                  {/* Abend-Werte */}
+                  <div className="bg-gray-50 p-2 rounded">
+                    <div className="flex items-center mb-1">
+                      <Clock size={14} className="text-purple-500 mr-1" />
+                      <span className="text-xs font-medium text-gray-700">Abend</span>
+                    </div>
+                    
+                    {entry.abendSys > 0 && entry.abendDia > 0 ? (
+                      <div 
+                        className="px-2 py-1 text-center rounded text-xs font-medium w-full"
+                        style={getReadableStyle(abendBP)}
+                      >
+                        {formatTableValue(entry.abendSys, entry.abendDia, entry.abendPuls || '-')}
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-400 text-xs">-</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
       
-      {/* Paginierung */}
+      {/* Paginierung - Für Desktop und Mobile */}
       {totalPages > 1 && (
         <div className="flex justify-between items-center mt-4 px-2">
           <div className="text-sm text-gray-600">

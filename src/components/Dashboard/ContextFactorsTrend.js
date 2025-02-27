@@ -201,14 +201,14 @@ const ContextFactorsTrend = ({ contextData }) => {
   };
   
   return (
-    <div className="bg-gray-100 p-4 rounded-lg shadow-md mb-6 border border-gray-300">
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-semibold text-gray-800">Kontextfaktoren-Trend</h2>
+    <div className="bg-gray-100 p-3 sm:p-4 rounded-lg shadow-md mb-6 border border-gray-300">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
+        <h2 className="text-lg font-semibold text-gray-800 mb-2 sm:mb-0">Kontextfaktoren-Trend</h2>
         
         <div className="relative">
           <button 
             onClick={() => setShowFilterOptions(!showFilterOptions)}
-            className="flex items-center text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md"
+            className="flex items-center text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md w-full sm:w-auto justify-between sm:justify-start"
           >
             <Filter size={16} className="mr-1.5 text-blue-700" />
             <span className="text-blue-700 font-medium">
@@ -218,7 +218,7 @@ const ContextFactorsTrend = ({ contextData }) => {
           
           {/* Dropdown für Zeitraumfilter */}
           {showFilterOptions && (
-            <div className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+            <div className="absolute right-0 left-0 sm:left-auto mt-1 w-full sm:w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
               <div className="p-2">
                 {filterOptions.map(option => (
                   <button
@@ -295,14 +295,16 @@ const ContextFactorsTrend = ({ contextData }) => {
         )}
       </div>
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {availableFactors.map(factor => (
-          <div key={factor} className="bg-white p-3 rounded-lg flex flex-col items-center shadow-sm border border-gray-200">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {availableFactors.map((factor) => (
+          <div key={factor} className="bg-white p-2 rounded-lg flex flex-col items-center shadow-sm border border-gray-200">
             <div className="text-indigo-600 mb-1">
-              {factorIcons[factor]}
+              {/* Responsive Icons: Kleiner auf Mobilgeräten */}
+              <span className="hidden sm:block">{factorIcons[factor]}</span>
+              <span className="sm:hidden">{React.cloneElement(factorIcons[factor], { size: 18 })}</span>
             </div>
             
-            <div className="text-sm font-medium text-gray-800">{factorLabels[factor]}</div>
+            <div className="text-sm font-medium text-gray-800 text-center">{factorLabels[factor]}</div>
             
             {/* Wert als Text anzeigen mit Fallback für undefined-Werte */}
             <div className="text-base font-bold text-gray-900">

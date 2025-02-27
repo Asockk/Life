@@ -1,16 +1,44 @@
 // components/Dashboard/BloodPressureChart.js
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
          ResponsiveContainer, ReferenceLine } from 'recharts';
 import { getBloodPressureCategory } from '../../utils/bloodPressureUtils';
-import { Filter, Calendar } from 'lucide-react';
+import { Filter, Calendar, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 
 const BloodPressureChart = ({ data, viewType, avgValues }) => {
+  // State für mobile Optimierungen
+  const [isMobile, setIsMobile] = useState(false);
+  const [expandLegend, setExpandLegend] = useState(false);
+  
+  // Welche Linien sollen angezeigt werden
+  const [visibleLines, setVisibleLines] = useState({
+    systolic: true,
+    diastolic: true,
+    pulse: true,
+    references: true
+  });
+  
   // Zeitraumfilter für das Diagramm
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'month', 'week', 'custom'
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [showFilterOptions, setShowFilterOptions] = useState(false);
+  
+  // Prüfen, ob wir auf einem mobilen Gerät sind (beim Mounten und bei Größenänderungen)
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial Check
+    checkIfMobile();
+    
+    // Event Listener für Größenänderungen
+    window.addEventListener('resize', checkIfMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
   
   // Prefix für aktuelle Ansicht (morgen oder abend)
   const prefix = viewType === 'morgen' ? 'morgen' : 'abend';
@@ -98,6 +126,31 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     }
   }, [data, dateFilter, customStartDate, customEndDate]);
   
+  // Optimierte Daten für Mobile-Ansicht (Reduzierung der Datenpunkte)
+  const mobileOptimizedData = useMemo(() => {
+    if (!isMobile || filteredData.length <= 7) return filteredData;
+    
+    // Bei vielen Datenpunkten auf Mobilgeräten: Intelligente Reduzierung
+    // Strategie: Bei mehr als 7 Datenpunkten zeigen wir eine Auswahl an wichtigen Punkten
+    
+    // Option 1: Erste, letzte und gleichmäßig verteilte Zwischenpunkte anzeigen
+    if (filteredData.length <= 14) {
+      // Bei bis zu 14 Datenpunkten: Jeden zweiten anzeigen
+      return filteredData.filter((_, index) => index % 2 === 0);
+    } else if (filteredData.length <= 30) {
+      // Bei bis zu 30 Datenpunkten: Ungefähr 10 wichtige Punkte anzeigen
+      const step = Math.floor(filteredData.length / 10);
+      return filteredData.filter((_, index) => index % step === 0 || index === filteredData.length - 1);
+    } else {
+      // Bei sehr vielen Datenpunkten: Maximal 15 Punkte anzeigen
+      const step = Math.floor(filteredData.length / 15);
+      return filteredData.filter((_, index) => index % step === 0 || index === filteredData.length - 1);
+    }
+  }, [filteredData, isMobile]);
+  
+  // Die tatsächlich anzuzeigenden Daten (normal oder optimiert)
+  const displayData = isMobile ? mobileOptimizedData : filteredData;
+  
   // Verfügbare Zeiträume für das Dropdown
   const filterOptions = [
     { id: 'all', label: 'Alle Daten' },
@@ -161,6 +214,14 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     return `${firstDate} - ${lastDate}`;
   };
   
+  // Toggle für Sichtbarkeit der Linien
+  const toggleLine = (line) => {
+    setVisibleLines(prev => ({
+      ...prev,
+      [line]: !prev[line]
+    }));
+  };
+  
   // Custom Dot für die Linien, um 0-Werte nicht anzuzeigen
   const CustomizedDot = (props) => {
     const { cx, cy, value } = props;
@@ -170,9 +231,12 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       return null;
     }
     
+    // Größe des Punktes basierend auf Mobilgerät anpassen
+    const dotSize = isMobile ? 4 : 5;
+    
     // Sonst den Standardpunkt zurückgeben
     return (
-      <circle cx={cx} cy={cy} r={5} fill={props.stroke} stroke={props.stroke} strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={dotSize} fill={props.stroke} stroke={props.stroke} strokeWidth={2} />
     );
   };
   
@@ -185,9 +249,12 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       return null;
     }
     
+    // Größe des aktiven Punktes basierend auf Mobilgerät anpassen
+    const dotSize = isMobile ? 6 : 7;
+    
     // Sonst den aktiven Punkt zurückgeben
     return (
-      <circle cx={cx} cy={cy} r={7} fill={props.stroke} stroke={props.stroke} strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={dotSize} fill={props.stroke} stroke={props.stroke} strokeWidth={2} />
     );
   };
   
@@ -207,9 +274,9 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       const category = getBloodPressureCategory(sys, dia);
       
       return (
-        <div className="custom-tooltip bg-white p-3 border border-gray-200 shadow-lg rounded-md">
-          <p className="font-medium">{label}, {data.datum}</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+        <div className="custom-tooltip bg-white p-2 sm:p-3 border border-gray-200 shadow-lg rounded-md max-w-[180px] sm:max-w-none">
+          <p className="font-medium text-sm">{label}, {data.datum}</p>
+          <div className="grid grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-1 mt-1 text-xs sm:text-sm">
             {sys > 0 && (
               <>
                 <span className="text-gray-600">Systolisch:</span>
@@ -245,23 +312,89 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     return null;
   }, [prefix]);
   
+  // Angepasste mobile Legende
+  const renderMobileLegend = () => {
+    return (
+      <div className="mb-2 mt-1">
+        <div 
+          className="flex items-center justify-between bg-gray-100 p-2 rounded-md cursor-pointer"
+          onClick={() => setExpandLegend(!expandLegend)}
+        >
+          <span className="font-medium text-sm">Linien anzeigen/ausblenden</span>
+          {expandLegend ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
+        
+        {expandLegend && (
+          <div className="mt-2 grid grid-cols-2 gap-2 px-2">
+            <div 
+              className={`flex items-center p-2 rounded-md cursor-pointer ${visibleLines.systolic ? 'bg-red-50' : 'bg-gray-100'}`}
+              onClick={() => toggleLine('systolic')}
+            >
+              <div className="w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: '#FF4136' }}></div>
+              <span className="text-xs">Systolisch</span>
+              {visibleLines.systolic ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
+            </div>
+            
+            <div 
+              className={`flex items-center p-2 rounded-md cursor-pointer ${visibleLines.diastolic ? 'bg-blue-50' : 'bg-gray-100'}`}
+              onClick={() => toggleLine('diastolic')}
+            >
+              <div className="w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: '#0074D9' }}></div>
+              <span className="text-xs">Diastolisch</span>
+              {visibleLines.diastolic ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
+            </div>
+            
+            <div 
+              className={`flex items-center p-2 rounded-md cursor-pointer ${visibleLines.pulse ? 'bg-green-50' : 'bg-gray-100'}`}
+              onClick={() => toggleLine('pulse')}
+            >
+              <div className="w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: '#2ECC40' }}></div>
+              <span className="text-xs">Puls</span>
+              {visibleLines.pulse ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
+            </div>
+            
+            <div 
+              className={`flex items-center p-2 rounded-md cursor-pointer ${visibleLines.references ? 'bg-purple-50' : 'bg-gray-100'}`}
+              onClick={() => toggleLine('references')}
+            >
+              <div className="flex-1 h-1 mr-2 bg-purple-300" style={{ backgroundImage: 'linear-gradient(to right, transparent 50%, white 50%)', backgroundSize: '10px 100%' }}></div>
+              <span className="text-xs">Referenzlinien</span>
+              {visibleLines.references ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  // Rendere Warnhinweis bei vielen Datenpunkten auf Mobilgeräten
+  const renderMobileDataWarning = () => {
+    if (!isMobile || filteredData.length <= mobileOptimizedData.length) return null;
+    
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2 text-xs text-yellow-800 mb-2">
+        <strong>Hinweis:</strong> Es werden {mobileOptimizedData.length} von {filteredData.length} Datenpunkten angezeigt. Verwende die Filter für eine detailliertere Ansicht.
+      </div>
+    );
+  };
+  
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-300 mb-6">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-semibold text-gray-800">
+    <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-300 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+        <h2 className="text-lg font-semibold text-gray-800 mb-2 sm:mb-0">
           {viewType === 'morgen' ? 'Morgen-Blutdruckwerte' : 'Abend-Blutdruckwerte'}
         </h2>
         
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="text-sm text-gray-700 font-medium">
             {filteredData.length} Messungen
           </div>
           
           {/* Zeitraum-Filter Dropdown */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <button 
               onClick={() => setShowFilterOptions(!showFilterOptions)}
-              className="flex items-center text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md"
+              className="flex w-full sm:w-auto items-center justify-between text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md"
             >
               <Filter size={16} className="mr-1.5 text-blue-700" />
               <span className="text-blue-700 font-medium">
@@ -270,7 +403,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
             </button>
             
             {showFilterOptions && (
-              <div className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+              <div className="absolute right-0 mt-1 w-full sm:w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                 <div className="p-2">
                   {filterOptions.map(option => (
                     <button
@@ -344,124 +477,164 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         <span className="font-medium">Zeitraum: {getDateRange()}</span>
       </div>
       
-      <div className="h-80">
+      {/* Mobile-Optimierungen */}
+      {isMobile && (
+        <>
+          {renderMobileLegend()}
+          {renderMobileDataWarning()}
+        </>
+      )}
+      
+      <div className="h-64 sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart 
-            data={filteredData} 
-            margin={{ top: 20, right: 120, left: 10, bottom: 10 }}
+            data={displayData} 
+            margin={{ 
+              top: 20, 
+              right: isMobile ? 10 : 120, 
+              left: isMobile ? 0 : 10, 
+              bottom: 10 
+            }}
             connectNulls={false} // Wichtig: 0-Werte nicht verbinden
           >
             <CartesianGrid strokeDasharray="3 3" opacity={0.7} />
             <XAxis 
               dataKey="tag" 
-              tick={{ fill: '#333', fontSize: 12 }}
+              tick={{ fill: '#333', fontSize: isMobile ? 10 : 12 }}
               tickLine={{ stroke: '#555' }}
+              interval={isMobile ? 'preserveEnd' : 0}
             />
             <YAxis 
               domain={[40, 180]} 
-              tick={{ fill: '#333', fontSize: 12 }}
+              tick={{ fill: '#333', fontSize: isMobile ? 10 : 12 }}
               tickLine={{ stroke: '#555' }}
               tickCount={7}
+              width={isMobile ? 25 : 30}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend
-              iconType="circle"
-              layout="horizontal"
-              verticalAlign="top"
-              align="center"
-              wrapperStyle={{ paddingBottom: '10px' }}
-            />
+            
+            {/* Legend nur auf Desktop anzeigen, auf Mobile durch eigene Komponente ersetzt */}
+            {!isMobile && (
+              <Legend
+                iconType="circle"
+                layout="horizontal"
+                verticalAlign="top"
+                align="center"
+                wrapperStyle={{ paddingBottom: '10px' }}
+              />
+            )}
                 
             {/* Referenzlinien für Blutdruckbereiche */}
-            <ReferenceLine 
-              y={120} 
-              stroke="#2ECC40" 
-              strokeDasharray="3 3" 
-              label={{
-                value: "Normal", 
-                position: "right", 
-                fill: "#2ECC40",
-                offset: 5
-              }} 
-            />
-            <ReferenceLine 
-              y={140} 
-              stroke="#FF851B" 
-              strokeDasharray="3 3" 
-              label={{
-                value: "Hyp. Grad 1", 
-                position: "right", 
-                fill: "#FF851B",
-                offset: 5
-              }} 
-            />
-            <ReferenceLine 
-              y={160} 
-              stroke="#FF4136" 
-              strokeDasharray="3 3" 
-              label={{
-                value: "Hyp. Grad 2", 
-                position: "right", 
-                fill: "#FF4136",
-                offset: 5
-              }} 
-            />
+            {visibleLines.references && (
+              <>
+                <ReferenceLine 
+                  y={120} 
+                  stroke="#2ECC40" 
+                  strokeDasharray="3 3" 
+                  label={isMobile ? null : {
+                    value: "Normal", 
+                    position: "right", 
+                    fill: "#2ECC40",
+                    fontSize: 12,
+                    offset: 5
+                  }} 
+                />
+                <ReferenceLine 
+                  y={140} 
+                  stroke="#FF851B" 
+                  strokeDasharray="3 3" 
+                  label={isMobile ? null : {
+                    value: "Hyp. Grad 1", 
+                    position: "right", 
+                    fill: "#FF851B",
+                    fontSize: 12,
+                    offset: 5
+                  }} 
+                />
+                <ReferenceLine 
+                  y={160} 
+                  stroke="#FF4136" 
+                  strokeDasharray="3 3" 
+                  label={isMobile ? null : {
+                    value: "Hyp. Grad 2", 
+                    position: "right", 
+                    fill: "#FF4136",
+                    fontSize: 12,
+                    offset: 5
+                  }} 
+                />
+              </>
+            )}
                 
             {/* Hauptlinien mit angepassten Dots, um 0-Werte zu ignorieren */}
-            <Line 
-              type="monotone" 
-              dataKey={`${prefix}Sys`} 
-              stroke="#FF4136" 
-              name="Systolisch" 
-              strokeWidth={2.5}
-              dot={<CustomizedDot />}
-              activeDot={<CustomizedActiveDot />}
-              connectNulls={false} // 0-Werte nicht verbinden
-            />
-            <Line 
-              type="monotone" 
-              dataKey={`${prefix}Dia`} 
-              stroke="#0074D9" 
-              name="Diastolisch" 
-              strokeWidth={2.5}
-              dot={<CustomizedDot />}
-              activeDot={<CustomizedActiveDot />}
-              connectNulls={false} // 0-Werte nicht verbinden
-            />
-            <Line 
-              type="monotone" 
-              dataKey={`${prefix}Puls`} 
-              stroke="#2ECC40" 
-              name="Puls" 
-              strokeWidth={2}
-              dot={<CustomizedDot />}
-              activeDot={<CustomizedActiveDot />}
-              connectNulls={false} // 0-Werte nicht verbinden
-            />
+            {visibleLines.systolic && (
+              <Line 
+                type="monotone" 
+                dataKey={`${prefix}Sys`} 
+                stroke="#FF4136" 
+                name="Systolisch" 
+                strokeWidth={2.5}
+                dot={<CustomizedDot />}
+                activeDot={<CustomizedActiveDot />}
+                connectNulls={false} // 0-Werte nicht verbinden
+              />
+            )}
+            
+            {visibleLines.diastolic && (
+              <Line 
+                type="monotone" 
+                dataKey={`${prefix}Dia`} 
+                stroke="#0074D9" 
+                name="Diastolisch" 
+                strokeWidth={2.5}
+                dot={<CustomizedDot />}
+                activeDot={<CustomizedActiveDot />}
+                connectNulls={false} // 0-Werte nicht verbinden
+              />
+            )}
+            
+            {visibleLines.pulse && (
+              <Line 
+                type="monotone" 
+                dataKey={`${prefix}Puls`} 
+                stroke="#2ECC40" 
+                name="Puls" 
+                strokeWidth={2}
+                dot={<CustomizedDot />}
+                activeDot={<CustomizedActiveDot />}
+                connectNulls={false} // 0-Werte nicht verbinden
+              />
+            )}
                 
             {/* Durchschnittslinien */}
-            <ReferenceLine 
-              y={avgValues.sys} 
-              stroke="#B10DC9" 
-              strokeWidth={1.5}
-              label={{
-                value: "Ø Sys", 
-                position: "left", 
-                fill: "#B10DC9",
-                offset: 5
-              }} 
-            />
-            <ReferenceLine 
-              y={avgValues.dia} 
-              stroke="#7FDBFF" 
-              strokeWidth={1.5}
-              label={{
-                value: "Ø Dia", 
-                position: "left", 
-                fill: "#7FDBFF",
-                offset: 5
-              }} 
-            />
+            {visibleLines.references && (
+              <>
+                <ReferenceLine 
+                  y={avgValues.sys} 
+                  stroke="#B10DC9" 
+                  strokeWidth={1.5}
+                  label={isMobile ? null : {
+                    value: "Ø Sys", 
+                    position: "left", 
+                    fill: "#B10DC9",
+                    fontSize: 11,
+                    offset: 5
+                  }} 
+                />
+                <ReferenceLine 
+                  y={avgValues.dia} 
+                  stroke="#7FDBFF" 
+                  strokeWidth={1.5}
+                  label={isMobile ? null : {
+                    value: "Ø Dia", 
+                    position: "left", 
+                    fill: "#7FDBFF",
+                    fontSize: 11,
+                    offset: 5
+                  }} 
+                />
+              </>
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>

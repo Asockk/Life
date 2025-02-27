@@ -4,9 +4,9 @@ import React from 'react';
 const ToggleViewButtons = ({ viewType, setViewType }) => {
   return (
     <div className="mb-4">
-      <div className="bg-white inline-flex rounded-md shadow-sm" role="group">
+      <div className="flex w-full bg-white rounded-md shadow-sm" role="group">
         <button 
-          className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-l-lg ${
             viewType === 'morgen' 
               ? 'bg-blue-600 text-white' 
               : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -16,7 +16,7 @@ const ToggleViewButtons = ({ viewType, setViewType }) => {
           Morgen-Werte
         </button>
         <button 
-          className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-r-lg ${
             viewType === 'abend' 
               ? 'bg-purple-600 text-white' 
               : 'bg-white text-gray-700 hover:bg-gray-100'

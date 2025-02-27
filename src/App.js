@@ -92,24 +92,24 @@ const BlutdruckTracker = () => {
   const hasContextData = Object.keys(contextFactors).length > 0;
 
   return (
-    <div className="mx-auto p-4 bg-gray-50 rounded-lg">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Blutdruck-Tracker</h1>
+    <div className="mx-auto p-2 sm:p-4 bg-gray-50 rounded-lg">
+      {/* Header - optimiert für Mobile */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
+        <h1 className="text-xl font-bold mb-3 sm:mb-0">Blutdruck-Tracker</h1>
         <div className="flex flex-wrap gap-2">
           <button 
             onClick={handleAddNew}
-            className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center"
+            className="flex-1 sm:flex-auto bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center justify-center sm:justify-start"
           >
             <Plus size={18} className="mr-1" />
-            Neuer Eintrag
+            <span>Neuer Eintrag</span>
           </button>
           <button 
             onClick={() => setShowImportModal(true)}
-            className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center"
+            className="flex-1 sm:flex-auto bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center sm:justify-start"
           >
             <Upload size={18} className="mr-1" />
-            Import/Export
+            <span>Import/Export</span>
           </button>
         </div>
       </div>
@@ -146,11 +146,11 @@ const BlutdruckTracker = () => {
         onDelete={deleteEntry} 
       />
       
-      {/* Berichterstellung Button */}
-      <div className="mb-4 flex justify-end">
+      {/* Berichterstellung Button - Responsive */}
+      <div className="mb-4 flex justify-center sm:justify-end">
         <button 
           onClick={toggleReport}
-          className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center"
+          className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center"
         >
           <FileText size={18} className="mr-1" />
           Ärztlichen Bericht erstellen
