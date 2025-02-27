@@ -4,12 +4,16 @@ import { useState, useCallback, useMemo } from 'react';
 import { initialData, prepareDataWithMovingAverages, prepareDataWithAverages, sortDataByDate, standardizeDateFormat } from '../utils/dataUtils';
 import { getBloodPressureCategory, calculateAverage } from '../utils/bloodPressureUtils';
 import { validateBloodPressure, validateForm, formatDateForDisplay } from '../utils/validationUtils';
+import { useDialog } from '../contexts/DialogContext';
 
 const useBloodPressureData = () => {
   // State für die Daten
   const [data, setData] = useState(initialData);
   const [viewType, setViewType] = useState('morgen'); // 'morgen' oder 'abend'
   const [statusMessage, setStatusMessage] = useState({ text: '', type: '' });
+
+  // Dialog-Kontext für Bestätigungsdialoge
+  const { openConfirmDialog } = useDialog() || {};
 
   // Kontextfaktoren für alle Tage: { "YYYY-MM-DD": { stress: 2, sleep: 3, ... }, ... }
   const [contextFactors, setContextFactors] = useState({});
@@ -20,14 +24,19 @@ const useBloodPressureData = () => {
   // State für den angezeigten Bericht
   const [showReport, setShowReport] = useState(false);
   
-  // Funktion: Statusnachricht anzeigen
+  // Funktion: Statusnachricht anzeigen - VERBESSERTE VERSION
   const showStatusMessage = useCallback((text, type) => {
-    setStatusMessage({ text, type });
+    // Setze zunächst eine leere Nachricht, um sicherzustellen, dass eine neue Nachricht immer
+    // einen neuen useEffect-Durchlauf in der StatusMessage-Komponente auslöst,
+    // selbst wenn dieselbe Nachricht zweimal hintereinander gesendet wird
+    setStatusMessage({ text: '', type: '' });
     
-    // Nach 3 Sekunden ausblenden
+    // Dann setze die eigentliche Nachricht mit einem kleinen Zeitabstand
     setTimeout(() => {
-      setStatusMessage({ text: '', type: '' });
-    }, 3000);
+      setStatusMessage({ text, type });
+    }, 10);
+    
+    // Die automatische Ausblendung wird jetzt in der StatusMessage-Komponente gesteuert
   }, []);
 
   // Prozessierte Daten mit berechneten Werten
@@ -320,30 +329,60 @@ const useBloodPressureData = () => {
     return { success: true };
   }, [showStatusMessage, analyzeFactorCorrelations]);
 
+  // VERBESSERTE deleteEntry-Funktion mit DialogContext
   const deleteEntry = useCallback((id) => {
     // Finde das Datum des zu löschenden Eintrags
     const entryToDelete = data.find(item => item.id === id);
     
-    const confirmed = window.confirm("Möchten Sie diesen Eintrag wirklich löschen?");
-    if (confirmed) {
-      // Lösche Blutdruckeintrag
-      setData(prevData => prevData.filter(item => item.id !== id));
-      
-      // Wenn Eintrag gefunden wurde, lösche auch zugehörige Kontextfaktoren
-      if (entryToDelete) {
-        const isoDate = convertDisplayDateToISO(entryToDelete.datum);
-        if (isoDate && contextFactors[isoDate]) {
-          setContextFactors(prev => {
-            const newContexts = { ...prev };
-            delete newContexts[isoDate];
-            return newContexts;
-          });
+    // Sicherstellen, dass der Dialog-Kontext verfügbar ist
+    if (!openConfirmDialog) {
+      // Fallback zur alten Methode, falls DialogContext nicht verfügbar ist
+      const confirmed = window.confirm("Möchten Sie diesen Eintrag wirklich löschen?");
+      if (confirmed) {
+        // Lösche Blutdruckeintrag
+        setData(prevData => prevData.filter(item => item.id !== id));
+        
+        // Wenn Eintrag gefunden wurde, lösche auch zugehörige Kontextfaktoren
+        if (entryToDelete) {
+          const isoDate = convertDisplayDateToISO(entryToDelete.datum);
+          if (isoDate && contextFactors[isoDate]) {
+            setContextFactors(prev => {
+              const newContexts = { ...prev };
+              delete newContexts[isoDate];
+              return newContexts;
+            });
+          }
         }
+        
+        showStatusMessage("Eintrag erfolgreich gelöscht", "success");
       }
-      
-      showStatusMessage("Eintrag erfolgreich gelöscht", "success");
+      return;
     }
-  }, [data, contextFactors, showStatusMessage, convertDisplayDateToISO]);
+    
+    // Moderner Bestätigungsdialog
+    openConfirmDialog({
+      title: "Eintrag löschen",
+      message: "Möchten Sie diesen Blutdruck-Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      onConfirm: () => {
+        // Lösche Blutdruckeintrag
+        setData(prevData => prevData.filter(item => item.id !== id));
+        
+        // Wenn Eintrag gefunden wurde, lösche auch zugehörige Kontextfaktoren
+        if (entryToDelete) {
+          const isoDate = convertDisplayDateToISO(entryToDelete.datum);
+          if (isoDate && contextFactors[isoDate]) {
+            setContextFactors(prev => {
+              const newContexts = { ...prev };
+              delete newContexts[isoDate];
+              return newContexts;
+            });
+          }
+        }
+        
+        showStatusMessage("Eintrag erfolgreich gelöscht", "success");
+      }
+    });
+  }, [data, contextFactors, showStatusMessage, convertDisplayDateToISO, openConfirmDialog]);
 
   // Verbesserte Funktion zum Importieren von Daten mit zuverlässiger Duplikaterkennung
   const importData = useCallback((importedData, importedContext = null) => {
