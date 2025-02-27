@@ -1,11 +1,11 @@
 {
-  "short_name": "Blutdruck",
+  "short_name": "Blutdruck-Tracker",
   "name": "Blutdruck-Tracker",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64",
-      "type": "image/x-icon"
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     },
     {
       "src": "logo192.png",
@@ -20,6 +20,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#0074D9",
+  "theme_color": "#FF4E50",
   "background_color": "#ffffff"
 }
