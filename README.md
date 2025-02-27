@@ -1,125 +1,160 @@
-# Blutdruck-Tracker
+# Blood Pressure Tracker 📊❤️
 
-Eine React-Anwendung zur Erfassung und Visualisierung von Blutdruckwerten.
+## Overview
 
-## Projektstruktur
+Blood Pressure Tracker is a comprehensive web application designed to help users monitor and analyze their blood pressure measurements. The app provides a user-friendly interface for recording daily blood pressure readings, tracking contextual factors, and generating detailed medical reports.
 
-Die Anwendung wurde in folgende Module aufgeteilt:
+## 🌟 Features
+
+### 1. Blood Pressure Logging
+- Record morning and evening blood pressure measurements
+- Track systolic and diastolic pressure
+- Monitor pulse rate
+- Support for daily entries
+
+### 2. Context Tracking
+Understand how various lifestyle factors might influence your blood pressure:
+- Stress levels
+- Sleep quality
+- Physical activity
+- Salt intake
+- Caffeine consumption
+- Alcohol consumption
+
+### 3. Data Visualization
+- Interactive line charts showing blood pressure trends
+- Moving average calculations
+- Comparison between morning and evening measurements
+
+### 4. Analysis and Reporting
+- Automatic blood pressure category classification
+- Minimum and maximum value tracking
+- Comprehensive medical report generation
+- Export data to CSV
+- PDF report creation
+
+### 5. User-Friendly Interface
+- Responsive design (mobile and desktop)
+- Easy data entry
+- Intuitive navigation
+- Context factor tracking
+
+## 🛠 Technologies Used
+
+- React
+- Tailwind CSS
+- Recharts (for data visualization)
+- jsPDF (for report generation)
+- Lucide React (for icons)
+- Papaparse (for CSV handling)
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v14 or later)
+- npm or yarn
+
+### Installation
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/blood-pressure-tracker.git
+cd blood-pressure-tracker
+```
+
+2. Install dependencies
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Start the development server
+```bash
+npm start
+# or
+yarn start
+```
+
+## 📦 Project Structure
 
 ```
 src/
-├── utils/                # Hilfs- und Dienstprogramme
-│   ├── bloodPressureUtils.js  # Blutdruck-spezifische Funktionen
-│   ├── dataUtils.js           # Datenverarbeitung und -transformation
-│   └── validationUtils.js     # Validierungsfunktionen
-├── hooks/                # Custom React Hooks
-│   └── useBloodPressureData.js  # Zentrale Datenverwaltung
-├── components/           # React-Komponenten
-│   ├── Dashboard/        # Dashboard-Komponenten
-│   │   ├── BloodPressureSummary.js      # Zusammenfassung
-│   │   ├── BloodPressureChart.js        # Diagramm
-│   │   └── BloodPressureCategoryLegend.js  # Kategorien-Legende
-│   ├── Table/            # Tabellen-Komponenten
-│   │   └── BloodPressureTable.js        # Daten-Tabelle
-│   ├── Forms/            # Formular-Komponenten
-│   │   ├── AddEntryForm.js              # Formular für neue Einträge
-│   │   ├── EditEntryForm.js             # Formular zum Bearbeiten
-│   │   └── ImportModal.js               # Import-Dialog
-│   └── UI/               # UI-Komponenten
-│       ├── StatusMessage.js             # Statusnachrichten
-│       └── ToggleViewButtons.js         # Ansichtsumschaltung
-└── App.js                # Hauptkomponente
+│
+├── components/
+│   ├── Dashboard/        # Dashboard-related components
+│   ├── Forms/            # Data entry forms
+│   ├── Reports/          # Report generation components
+│   ├── Table/            # Data table component
+│   └── UI/               # Shared UI components
+│
+├── hooks/                # Custom React hooks
+│   └── useBloodPressureData.js
+│
+├── utils/                # Utility functions
+│   ├── bloodPressureUtils.js
+│   ├── dataUtils.js
+│   ├── validationUtils.js
+│   └── csvExportUtils.js
+│
+└── contexts/             # React contexts
+    └── DialogContext.js
 ```
 
-## Komponentenbeschreibungen
+## 📊 Blood Pressure Categories
 
-### Utils
+The app classifies blood pressure into the following categories:
+- Optimal: <120/<80 mmHg
+- Normal: 120-129/<80 mmHg
+- High Normal: 130-139/80-89 mmHg
+- Hypertension Grade 1: 140-159/90-99 mmHg
+- Hypertension Grade 2: 160-179/100-109 mmHg
+- Hypertension Grade 3: ≥180/≥110 mmHg
 
-**bloodPressureUtils.js**
-- Enthält Funktionen zur Klassifizierung von Blutdruckwerten in medizinische Kategorien
-- Berechnet Durchschnittswerte und formatiert Tabellenwerte
+## 🔍 Key Components
 
-**dataUtils.js**
-- Verarbeitet und transformiert Daten für die Anzeige
-- Enthält Funktionen zum Parsen von CSV-Dateien
-- Bereitet Daten für Diagramme mit gleitenden Durchschnitten und Trendlinien vor
+### Data Entry
+- Capture daily blood pressure measurements
+- Record contextual health factors
+- Validate input data
 
-**validationUtils.js**
-- Validierungsfunktionen für Formulareingaben
-- Prüft Blutdruckwerte auf medizinische Plausibilität
-- Konvertiert und formatiert Datumsformate
+### Visualization
+- Interactive line charts
+- Moving average calculation
+- Trend analysis
 
-### Hooks
+### Reporting
+- Generate comprehensive medical reports
+- Export data to CSV and PDF
+- Share with healthcare professionals
 
-**useBloodPressureData.js**
-- Zentralisiert die Datenverwaltung und -verarbeitung
-- Stellt CRUD-Operationen für Blutdruckeinträge bereit
-- Berechnet abgeleitete Daten wie Durchschnitte und Kategorien
+## 🤝 Contributing
 
-### Komponenten
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-#### Dashboard
+## 🔒 Data Privacy
 
-**BloodPressureSummary.js**
-- Zeigt Zusammenfassung der Blutdruckdaten
-- Visualisiert Durchschnittswerte und Kategorien
-- Zeigt Min/Max-Werte und Trends
+- All data is stored locally
+- No cloud storage or external data sharing
+- User has full control over their health data
 
-**BloodPressureChart.js**
-- Visualisiert Blutdruckdaten als interaktives Liniendiagramm
-- Unterstützt Morgen- und Abend-Ansichten
-- Zeigt gleitende Durchschnitte und Referenzlinien an
+## 📱 Responsive Design
 
-**BloodPressureCategoryLegend.js**
-- Erklärt die verschiedenen Blutdruckkategorien
-- Zeigt Farbkodierung und Richtwerte an
+The application is fully responsive and works seamlessly on:
+- Desktop browsers
+- Tablets
+- Mobile devices
 
-#### Table
+## 🚧 Future Roadmap
+- [ ] More detailed health insights
+- [ ] Integration with health tracking devices
 
-**BloodPressureTable.js**
-- Tabellarische Ansicht aller Blutdruckeinträge
-- Farbkodierung je nach Blutdruckkategorie
-- Aktionen zum Bearbeiten und Löschen von Einträgen
+## 📄 License
 
-#### Forms
+Distributed under the MIT License. See `LICENSE` for more information.
 
-**AddEntryForm.js**
-- Formular zum Hinzufügen neuer Blutdruckeinträge
-- Validiert Eingaben auf medizinische Plausibilität
-- Automatische Aktualisierung des Wochentags basierend auf dem Datum
-
-**EditEntryForm.js**
-- Formular zum Bearbeiten bestehender Einträge
-- Vorausgefüllt mit den bestehenden Werten
-- Validierung wie bei AddEntryForm
-
-**ImportModal.js**
-- Dialog zum Importieren von CSV-Dateien
-- Zeigt Vorschau der zu importierenden Daten
-- Meldet erkannte Probleme und behandelt fehlende Werte
-
-#### UI
-
-**StatusMessage.js**
-- Zeigt temporäre Erfolgs-, Fehler- und Infomeldungen
-- Verschiedene Stile je nach Meldungstyp
-
-**ToggleViewButtons.js**
-- Schalter zum Umschalten zwischen Morgen- und Abendansicht
-
-## Verwendete Bibliotheken
-
-- React mit Hooks für die UI
-- Recharts für interaktive Diagramme
-- Lucide React für Symbole und Icons
-- Tailwind CSS für das Styling
-
-## Funktionen
-
-- Erfassung von Blutdruckwerten (systolisch, diastolisch, Puls)
-- Separate Erfassung von Morgen- und Abendwerten
-- Automatische Kategorisierung nach medizinischen Standards
-- Visualisierung als Liniendiagramm mit gleitenden Durchschnitten
-- Berechnung von Durchschnittswerten und Trends
-- Import von Daten aus CSV-Dateien
-- Responsive Design für verschiedene Bildschirmgrößen
+**Disclaimer**: This application is not a medical device. Always consult with a healthcare professional for medical advice and interpretation of your health data.
