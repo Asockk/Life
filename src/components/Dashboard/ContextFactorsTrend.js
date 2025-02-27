@@ -154,11 +154,11 @@ const ContextFactorsTrend = ({ contextData }) => {
     const lowerIsBetter = ['stress', 'salt', 'caffeine', 'alcohol'];
     
     if (trend === 'up') {
-      return lowerIsBetter.includes(factor) ? 'text-red-500' : 'text-green-500';
+      return lowerIsBetter.includes(factor) ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
     } else if (trend === 'down') {
-      return lowerIsBetter.includes(factor) ? 'text-green-500' : 'text-red-500';
+      return lowerIsBetter.includes(factor) ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
     }
-    return 'text-gray-500';
+    return 'text-gray-700 font-medium';
   };
   
   // Wenn überhaupt keine Daten vorhanden sind
@@ -185,18 +185,35 @@ const ContextFactorsTrend = ({ contextData }) => {
   const firstDay = latestDays.length > 0 ? latestDays[latestDays.length - 1] : null;
   const lastDay = latestDays.length > 0 ? latestDays[0] : null;
   
+  // Hilfsfunktion, um sicher den Wert für einen Faktor zu erhalten
+  const getFactorValueLabel = (factor, value) => {
+    // Prüfe, ob der Faktor und der Wert definiert sind
+    if (factor && value !== undefined && valueLabels[factor]) {
+      // Stelle sicher, dass der Index im gültigen Bereich liegt
+      if (value >= 0 && value < valueLabels[factor].length) {
+        return valueLabels[factor][value];
+      }
+      // Fallback: Den numerischen Wert anzeigen
+      return `Wert ${value}`;
+    }
+    // Fallback: Wenn nichts vorhanden ist
+    return '-';
+  };
+  
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+    <div className="bg-gray-100 p-4 rounded-lg shadow-md mb-6 border border-gray-300">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-semibold">Kontextfaktoren-Trend</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Kontextfaktoren-Trend</h2>
         
         <div className="relative">
           <button 
             onClick={() => setShowFilterOptions(!showFilterOptions)}
-            className="flex items-center text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md"
+            className="flex items-center text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md"
           >
-            <Filter size={16} className="mr-1.5" />
-            {filterOptions.find(option => option.id === dateFilter)?.label || 'Zeitraum'}
+            <Filter size={16} className="mr-1.5 text-blue-700" />
+            <span className="text-blue-700 font-medium">
+              {filterOptions.find(option => option.id === dateFilter)?.label || 'Zeitraum'}
+            </span>
           </button>
           
           {/* Dropdown für Zeitraumfilter */}
@@ -211,7 +228,7 @@ const ContextFactorsTrend = ({ contextData }) => {
                       setShowFilterOptions(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                      dateFilter === option.id ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                      dateFilter === option.id ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
                     }`}
                   >
                     {option.label}
@@ -225,7 +242,7 @@ const ContextFactorsTrend = ({ contextData }) => {
                     // Nicht schließen - lässt Benutzer die Datumsfelder sehen
                   }}
                   className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                    dateFilter === 'custom' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                    dateFilter === 'custom' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
                   }`}
                 >
                   Benutzerdefinierter Zeitraum
@@ -236,7 +253,7 @@ const ContextFactorsTrend = ({ contextData }) => {
                   <div className="p-2 border-t mt-2">
                     <div className="flex flex-col space-y-2">
                       <div>
-                        <label className="block text-xs text-gray-600 mb-1">Von:</label>
+                        <label className="block text-xs text-gray-700 mb-1 font-medium">Von:</label>
                         <input
                           type="date"
                           value={customStartDate}
@@ -245,7 +262,7 @@ const ContextFactorsTrend = ({ contextData }) => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 mb-1">Bis:</label>
+                        <label className="block text-xs text-gray-700 mb-1 font-medium">Bis:</label>
                         <input
                           type="date"
                           value={customEndDate}
@@ -255,7 +272,7 @@ const ContextFactorsTrend = ({ contextData }) => {
                       </div>
                       <button
                         onClick={() => setShowFilterOptions(false)}
-                        className="w-full bg-blue-500 text-white py-1.5 rounded-md text-sm"
+                        className="w-full bg-blue-600 text-white py-1.5 rounded-md text-sm font-medium"
                       >
                         Anwenden
                       </button>
@@ -269,27 +286,27 @@ const ContextFactorsTrend = ({ contextData }) => {
       </div>
       
       {/* Zeitraumanzeige - immer sichtbar */}
-      <div className="text-sm text-gray-600 mb-3 flex items-center border-b pb-2">
-        <Calendar size={16} className="mr-2" />
+      <div className="text-sm text-gray-700 mb-3 flex items-center border-b border-gray-300 pb-2">
+        <Calendar size={16} className="mr-2 text-blue-600" />
         {firstDay && lastDay ? (
-          <>Zeitraum: {formatDateForDisplay(firstDay)} - {formatDateForDisplay(lastDay)}</>
+          <span className="font-medium">Zeitraum: {formatDateForDisplay(firstDay)} - {formatDateForDisplay(lastDay)}</span>
         ) : (
-          <>Kein Zeitraum verfügbar</>
+          <span className="font-medium">Kein Zeitraum verfügbar</span>
         )}
       </div>
       
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {availableFactors.map(factor => (
-          <div key={factor} className="bg-gray-50 p-3 rounded-lg flex flex-col items-center">
-            <div className="text-indigo-500 mb-1">
+          <div key={factor} className="bg-white p-3 rounded-lg flex flex-col items-center shadow-sm border border-gray-200">
+            <div className="text-indigo-600 mb-1">
               {factorIcons[factor]}
             </div>
             
-            <div className="text-sm font-medium">{factorLabels[factor]}</div>
+            <div className="text-sm font-medium text-gray-800">{factorLabels[factor]}</div>
             
-            {/* Wert als Text anzeigen (z.B. "Niedrig" statt "0") */}
-            <div className="text-base font-bold">
-              {valueLabels[factor]?.[latestContextData[factor]] || latestContextData[factor]}
+            {/* Wert als Text anzeigen mit Fallback für undefined-Werte */}
+            <div className="text-base font-bold text-gray-900">
+              {getFactorValueLabel(factor, latestContextData[factor])}
             </div>
             
             {/* Nur Trend-Pfeil anzeigen ohne Text */}

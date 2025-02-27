@@ -102,15 +102,16 @@ export const parseCSVData = (text) => {
     const subHeaders = lines[1].split(';');
     
     // Finde die Hauptspalten
-    let dayIndex = headers.indexOf('Day');
-    let dateIndex = headers.indexOf('Date');
+    let dayIndex = headers.indexOf('Tag') !== -1 ? headers.indexOf('Tag') : headers.indexOf('Day');
+    let dateIndex = headers.indexOf('Datum') !== -1 ? headers.indexOf('Datum') : headers.indexOf('Date');
     let bpMorningIndex = -1;
     let bpEveningIndex = -1;
     
     // Wenn die Standard-Indizes nicht gefunden werden, manuell suchen
     if (dayIndex === -1) {
       for (let i = 0; i < headers.length; i++) {
-        if (headers[i].toLowerCase().includes('day')) {
+        if (headers[i].toLowerCase().includes('tag') || 
+            headers[i].toLowerCase().includes('day')) {
           dayIndex = i;
           break;
         }
@@ -119,18 +120,22 @@ export const parseCSVData = (text) => {
     
     if (dateIndex === -1) {
       for (let i = 0; i < headers.length; i++) {
-        if (headers[i].toLowerCase().includes('date')) {
+        if (headers[i].toLowerCase().includes('datum') || 
+            headers[i].toLowerCase().includes('date')) {
           dateIndex = i;
           break;
         }
       }
     }
     
-    // Suche nach den Blutdruck-Spaltengruppen
+    // Suche nach den Blutdruck-Spaltengruppen - WICHTIG: Sowohl deutsche als auch englische Begriffe erkennen
     for (let i = 0; i < headers.length; i++) {
-      if (headers[i].toLowerCase().includes('blood pressure m')) {
+      const headerLower = headers[i].toLowerCase();
+      if (headerLower.includes('blood pressure m') || 
+          headerLower.includes('blutdruck morgen')) {
         bpMorningIndex = i;
-      } else if (headers[i].toLowerCase().includes('blood pressure e')) {
+      } else if (headerLower.includes('blood pressure e') || 
+                 headerLower.includes('blutdruck abend')) {
         bpEveningIndex = i;
       }
     }
@@ -139,14 +144,14 @@ export const parseCSVData = (text) => {
     if (dayIndex === -1) dayIndex = 0;
     if (dateIndex === -1) dateIndex = 1;
     
-    // Für dein Format wissen wir, dass die Unterspalten Sys, Dia, Pulse sind
+    // Für dein Format wissen wir, dass die Unterspalten Sys, Dia, Pulse/Puls sind
     // Finde die genauen Indizes in der zweiten Header-Zeile
     let mSysIndex = -1, mDiaIndex = -1, mPulseIndex = -1;
     let eSysIndex = -1, eDiaIndex = -1, ePulseIndex = -1;
     
     // Wenn bpMorningIndex und bpEveningIndex gefunden wurden
     if (bpMorningIndex !== -1) {
-      // In deinem Format sind die Werte direkt nach "Blood Pressure M"
+      // In deinem Format sind die Werte direkt nach "Blood Pressure M" / "Blutdruck Morgen"
       mSysIndex = bpMorningIndex;
       mDiaIndex = bpMorningIndex + 1;
       mPulseIndex = bpMorningIndex + 2;
@@ -165,7 +170,7 @@ export const parseCSVData = (text) => {
     }
     
     if (bpEveningIndex !== -1) {
-      // In deinem Format sind die Werte direkt nach "Blood Pressure E"
+      // In deinem Format sind die Werte direkt nach "Blood Pressure E" / "Blutdruck Abend"
       eSysIndex = bpEveningIndex;
       eDiaIndex = bpEveningIndex + 1;
       ePulseIndex = bpEveningIndex + 2;
@@ -177,10 +182,10 @@ export const parseCSVData = (text) => {
     }
     
     console.log(`Erkannte Spalten: 
-      Day = ${dayIndex}, 
-      Date = ${dateIndex}, 
-      Morning: Sys=${mSysIndex}, Dia=${mDiaIndex}, Pulse=${mPulseIndex}, 
-      Evening: Sys=${eSysIndex}, Dia=${eDiaIndex}, Pulse=${ePulseIndex}`);
+      Tag = ${dayIndex}, 
+      Datum = ${dateIndex}, 
+      Morgen: Sys=${mSysIndex}, Dia=${mDiaIndex}, Pulse=${mPulseIndex}, 
+      Abend: Sys=${eSysIndex}, Dia=${eDiaIndex}, Pulse=${ePulseIndex}`);
     
     // Verarbeitung der Datensätze
     const results = [];
@@ -198,25 +203,25 @@ export const parseCSVData = (text) => {
       }
       
       // Tag und Datum extrahieren
-      const day = values[dayIndex] || '';
-      const dateStr = values[dateIndex] || '';
+      const day = values[dayIndex] ? values[dayIndex].trim() : '';
+      const dateStr = values[dateIndex] ? values[dateIndex].trim() : '';
       
       if (!day || !dateStr) {
         skippedCount++;
         continue; // Überspringe Zeilen ohne Tag oder Datum
       }
       
-      // Datum parsen - speziell für "1. January, 2025" Format
-      const parsedDate = parseDateFromCSV(dateStr);
-      if (!parsedDate) {
+      // Datum parsen
+      const parsedDateResult = parseImportedDate(day, dateStr);
+      if (!parsedDateResult) {
         skippedCount++;
         continue; // Überspringen, wenn das Datum ungültig ist
       }
       
-      const { germanMonth, germanDay } = parsedDate;
+      const { formattedDate, tagKurz } = parsedDateResult;
       
       // Blutdruckwerte extrahieren
-      // Verwende direkt die ermittelten Spaltenindizes
+      // Verwende direkt die ermittelten Spaltenindizes und prüfe Grenzen
       let morgenSys = mSysIndex !== -1 && mSysIndex < values.length ? safeParseFloat(values[mSysIndex]) : 0;
       let morgenDia = mDiaIndex !== -1 && mDiaIndex < values.length ? safeParseFloat(values[mDiaIndex]) : 0;
       let morgenPuls = mPulseIndex !== -1 && mPulseIndex < values.length ? safeParseFloat(values[mPulseIndex]) : 0;
@@ -238,22 +243,6 @@ export const parseCSVData = (text) => {
       if (morgenSys === 0 || morgenDia === 0 || morgenPuls === 0 || 
           abendSys === 0 || abendDia === 0 || abendPuls === 0) {
         zeroValuesCount++;
-      }
-      
-      // Wochentag kurz formatieren
-      let tagKurz = translateDayToShortGerman(day);
-      
-      // WICHTIG: Formatiertes Datum im GLEICHEN FORMAT wie beim Export
-      // Um doppelte Einträge zu vermeiden
-      let formattedDate;
-      
-      // Prüfe, ob im Originaldatumsformat bereits "Januar 1" oder "1. Januar" vorliegt
-      if (dateStr.match(/\d+\.\s*\w+/)) {
-        // Format "1. Januar" beibehalten
-        formattedDate = `${germanDay}. ${germanMonth}`;
-      } else {
-        // Format "Januar 1" verwenden (Standardformat)
-        formattedDate = `${germanMonth} ${germanDay}`;
       }
       
       // Eintrag erstellen
@@ -290,6 +279,83 @@ export const parseCSVData = (text) => {
     throw error;
   }
 };
+
+// Parse importiertes Datum (neuer, verbesserter Parser)
+function parseImportedDate(weekdayStr, dateStr) {
+  if (!weekdayStr || !dateStr) return null;
+  
+  try {
+    // Wochentag in deutsche Kurzform umwandeln
+    const tagKurz = translateDayToShortGerman(weekdayStr);
+    
+    // Prüfen ob das Format "Month Day" ist (z.B. "Januar 9")
+    let germanDay, germanMonth;
+    
+    // Format: "Januar 9"
+    if (dateStr.includes(' ') && !dateStr.includes('.')) {
+      const parts = dateStr.split(' ');
+      germanMonth = parts[0].trim();
+      germanDay = parts[1].trim();
+      
+      // Jahreszahl entfernen, falls vorhanden
+      if (germanDay.match(/\d{4}/)) {
+        germanDay = germanDay.replace(/\d{4}/, '').trim();
+      }
+      if (parts.length > 2 && parts[2].match(/\d{4}/)) {
+        // Jahreszahl in Teil 3, nur die ersten beiden Teile verwenden
+      }
+    } 
+    // Format: "9. Januar"
+    else if (dateStr.includes('.') && dateStr.includes(' ')) {
+      const parts = dateStr.split('. ');
+      germanDay = parts[0].trim();
+      
+      // Zweiter Teil könnte "Januar 2025" sein
+      if (parts.length > 1) {
+        const monthParts = parts[1].split(' ');
+        germanMonth = monthParts[0].trim();
+      }
+    }
+    // Format: "Januar 9, 2025" oder ähnliches mit Komma
+    else if (dateStr.includes(',')) {
+      const mainPart = dateStr.split(',')[0].trim();
+      if (mainPart.includes(' ')) {
+        const parts = mainPart.split(' ');
+        germanMonth = parts[0].trim();
+        germanDay = parts[1].trim();
+      }
+    }
+    
+    // Wenn wir den Monat und Tag haben, formatieren wir das Datum
+    if (germanMonth && germanDay) {
+      // Monat in deutsche Form umwandeln
+      const monthTranslation = {
+        'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
+        'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
+        'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
+        'Januar': 'Januar', 'Februar': 'Februar', 'März': 'März', 'April': 'April',
+        'Mai': 'Mai', 'Juni': 'Juni', 'Juli': 'Juli', 'August': 'August',
+        'September': 'September', 'Oktober': 'Oktober', 'November': 'November', 'Dezember': 'Dezember'
+      };
+      
+      const deMonth = monthTranslation[germanMonth] || germanMonth;
+      
+      // Formatiertes Datum im europäischen Format: "Tag, Tag. Monat"
+      const formattedDate = `${germanDay}. ${deMonth}`;
+      
+      return {
+        formattedDate,
+        tagKurz,
+        germanDay,
+        germanMonth: deMonth
+      };
+    }
+  } catch (error) {
+    console.error('Fehler beim Parsen des importierten Datums:', error);
+  }
+  
+  return null;
+}
 
 // Sortiert die Daten nach Datum
 export const sortDataByDate = (data) => {

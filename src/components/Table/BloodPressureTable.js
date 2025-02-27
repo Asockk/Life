@@ -11,36 +11,80 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
   // Flag für Sortierungsrichtung (absteigend = true)
   const [sortDescending, setSortDescending] = useState(true);
   
-  // Funktion zum Sortieren der Daten
+  // Verbesserte Funktion zum Sortieren der Daten - verwendet das aktuelle Systemjahr
   const getSortedData = (dataArray, isDescending) => {
+    // Aktuelles Jahr für Datumsvergleich bei fehlender Jahreszahl
+    const currentYear = new Date().getFullYear();
+    
     return [...dataArray].sort((a, b) => {
-      // Versuche, Datum in Date-Objekte zu konvertieren
-      // Format "Monat Tag" wie "Januar 1"
+      // Verbesserte Funktion zum Parsen des Datums in ein vergleichbares Format
       const getDateValue = (dateStr) => {
+        if (!dateStr) return new Date(0);
+        
         const months = {
           'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
           'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
           'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
         };
         
-        if (dateStr && dateStr.includes(' ')) {
-          const [month, day] = dateStr.split(' ');
-          if (months[month] !== undefined) {
-            // Verwende 2025 als Standardjahr (könnte ein beliebiges Jahr sein)
-            return new Date(2025, months[month], parseInt(day));
+        let day, month, year = currentYear; // Aktuelles Jahr als Standard
+        
+        // Format "1. Januar 2025" oder "1. Januar"
+        if (dateStr.includes('.')) {
+          const dateParts = dateStr.split('. ');
+          day = parseInt(dateParts[0].trim());
+          
+          if (dateParts.length > 1) {
+            const restParts = dateParts[1].split(' ');
+            month = restParts[0].trim();
+            
+            // Prüfen, ob ein Jahr im Datum enthalten ist
+            if (restParts.length > 1) {
+              const possibleYear = parseInt(restParts[restParts.length - 1]);
+              if (!isNaN(possibleYear) && possibleYear > 2000) {
+                year = possibleYear;
+              }
+            }
+          } else {
+            return new Date(0); // Ungültiges Format
           }
         }
-        return new Date(0); // Fallback-Datum
+        // Format "Januar 1 2025" oder "Januar 1"
+        else if (dateStr.includes(' ')) {
+          const parts = dateStr.split(' ');
+          month = parts[0].trim();
+          
+          if (parts.length > 1) {
+            day = parseInt(parts[1].trim());
+            
+            // Prüfen, ob ein Jahr im Datum enthalten ist
+            if (parts.length > 2) {
+              const possibleYear = parseInt(parts[parts.length - 1]);
+              if (!isNaN(possibleYear) && possibleYear > 2000) {
+                year = possibleYear;
+              }
+            }
+          } else {
+            return new Date(0); // Ungültiges Format
+          }
+        } else {
+          return new Date(0); // Unbekanntes Format
+        }
+        
+        // Überprüfen, ob Monat in der Liste vorhanden ist
+        if (months[month] === undefined) {
+          return new Date(0);
+        }
+        
+        // Gültiges Datum erstellen (mit Jahr, falls vorhanden)
+        return new Date(year, months[month], day);
       };
       
+      const dateA = getDateValue(a.datum);
+      const dateB = getDateValue(b.datum);
+      
       // Sortierungsrichtung basierend auf Flag
-      if (isDescending) {
-        // Absteigend (neuere Daten zuerst)
-        return getDateValue(b.datum) - getDateValue(a.datum);
-      } else {
-        // Aufsteigend (ältere Daten zuerst)
-        return getDateValue(a.datum) - getDateValue(b.datum);
-      }
+      return isDescending ? dateB - dateA : dateA - dateB;
     });
   };
   
@@ -79,6 +123,27 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
     }
   };
   
+  // Style-Funktion für bessere Farbkontraste, aber im minimalistischen Stil
+  const getReadableStyle = (category) => {
+    // Verbesserte Farben mit modernem Look
+    const betterColors = {
+      "Optimal": { bg: "#DBF9DB", color: "#1A7A1A" },           // Dunkles Grün auf hellem Hintergrund
+      "Normal": { bg: "#E5FFDD", color: "#2D6A00" },           // Mittelgrün auf hellem Hintergrund
+      "Hoch normal": { bg: "#FFF4D1", color: "#8C6900" },      // Dunkelgelb auf hellem Hintergrund
+      "Hypertonie Grad 1": { bg: "#FFEBD4", color: "#B25000" }, // Orange auf hellem Hintergrund
+      "Hypertonie Grad 2": { bg: "#FFDBDB", color: "#D42E2E" }, // Rot auf hellem Hintergrund
+      "Hypertonie Grad 3": { bg: "#F8D7E8", color: "#A0105C" }, // Dunkelmagenta auf hellem Hintergrund
+      "Unbekannt": { bg: "#E5E5E5", color: "#707070" }         // Dunkelgrau auf hellgrauem Hintergrund
+    };
+    
+    const colorSet = betterColors[category.category] || betterColors["Unbekannt"];
+    
+    return {
+      backgroundColor: colorSet.bg,
+      color: colorSet.color
+    };
+  };
+  
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
       <div className="flex items-center justify-between mb-4">
@@ -86,7 +151,7 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
         <div className="flex items-center space-x-4">
           <button 
             onClick={toggleSortDirection}
-            className="text-sm px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-md transition duration-200 flex items-center"
+            className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition duration-200 flex items-center"
           >
             Sortierung: {sortDescending ? "Neueste zuerst" : "Älteste zuerst"}
           </button>
@@ -125,7 +190,7 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
                     {entry.morgenSys > 0 && entry.morgenDia > 0 ? (
                       <span 
                         className="px-2 py-1 inline-flex items-center justify-center rounded-full text-xs font-medium"
-                        style={{ backgroundColor: morgenBP.color + '20', color: morgenBP.color }}
+                        style={getReadableStyle(morgenBP)}
                       >
                         {formatTableValue(entry.morgenSys, entry.morgenDia, entry.morgenPuls || '-')}
                       </span>
@@ -137,7 +202,7 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
                     {entry.abendSys > 0 && entry.abendDia > 0 ? (
                       <span 
                         className="px-2 py-1 inline-flex items-center justify-center rounded-full text-xs font-medium"
-                        style={{ backgroundColor: abendBP.color + '20', color: abendBP.color }}
+                        style={getReadableStyle(abendBP)}
                       >
                         {formatTableValue(entry.abendSys, entry.abendDia, entry.abendPuls || '-')}
                       </span>

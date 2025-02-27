@@ -21,19 +21,38 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     
     // Konvertiert Datum wie "Januar 15" in ein Date-Objekt
     const parseDate = (dateStr) => {
+      if (!dateStr) return null;
+      
       const months = {
         'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
         'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
         'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
       };
       
-      if (dateStr && dateStr.includes(' ')) {
-        const [month, day] = dateStr.split(' ');
-        if (months[month] !== undefined) {
-          // Verwende 2025 als Standardjahr
-          return new Date(2025, months[month], parseInt(day));
+      // Fall 1: Format "Januar 15"
+      if (dateStr.includes(' ') && !dateStr.includes('.')) {
+        const parts = dateStr.split(' ');
+        if (parts.length >= 2 && months[parts[0]] !== undefined) {
+          const month = parts[0];
+          const day = parseInt(parts[1]);
+          if (!isNaN(day)) {
+            return new Date(2025, months[month], day);
+          }
         }
       }
+      
+      // Fall 2: Format "15. Januar"
+      if (dateStr.includes('.') && dateStr.includes(' ')) {
+        const parts = dateStr.split('. ');
+        if (parts.length >= 2) {
+          const day = parseInt(parts[0]);
+          const month = parts[1].split(' ')[0]; // Falls Jahr enthalten ist
+          if (!isNaN(day) && months[month] !== undefined) {
+            return new Date(2025, months[month], day);
+          }
+        }
+      }
+      
       return null;
     };
     
@@ -95,18 +114,33 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     // Sortiere nach Datum
     const sortedData = [...filteredData].sort((a, b) => {
       const parseDate = (dateStr) => {
+        if (!dateStr) return new Date(0);
+        
         const months = {
           'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
           'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
           'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
         };
         
-        if (dateStr && dateStr.includes(' ')) {
-          const [month, day] = dateStr.split(' ');
-          if (months[month] !== undefined) {
-            return new Date(2025, months[month], parseInt(day));
+        // Format: "Januar 15"
+        if (dateStr.includes(' ') && !dateStr.includes('.')) {
+          const parts = dateStr.split(' ');
+          if (parts.length >= 2 && months[parts[0]] !== undefined) {
+            return new Date(2025, months[parts[0]], parseInt(parts[1]));
           }
         }
+        
+        // Format: "15. Januar"
+        if (dateStr.includes('.') && dateStr.includes(' ')) {
+          const parts = dateStr.split('. ');
+          if (parts.length >= 2) {
+            const month = parts[1].split(' ')[0];
+            if (months[month] !== undefined) {
+              return new Date(2025, months[month], parseInt(parts[0]));
+            }
+          }
+        }
+        
         return new Date(0);
       };
       
@@ -117,17 +151,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     const formatDate = (dateStr) => {
       if (!dateStr) return "";
       
-      const months = {
-        'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
-        'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
-        'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
-      };
-      
-      if (dateStr.includes(' ')) {
-        const [month, day] = dateStr.split(' ');
-        return `${day.padStart(2, '0')}.${months[month]}.2025`;
-      }
-      
+      // Direktes Zurückgeben des Datums ohne weitere Verarbeitung
       return dateStr;
     };
     
@@ -222,14 +246,14 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
   }, [prefix]);
   
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-300 mb-6">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-semibold">
+        <h2 className="text-lg font-semibold text-gray-800">
           {viewType === 'morgen' ? 'Morgen-Blutdruckwerte' : 'Abend-Blutdruckwerte'}
         </h2>
         
         <div className="flex items-center space-x-3">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-700 font-medium">
             {filteredData.length} Messungen
           </div>
           
@@ -237,10 +261,12 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
           <div className="relative">
             <button 
               onClick={() => setShowFilterOptions(!showFilterOptions)}
-              className="flex items-center text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md"
+              className="flex items-center text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md"
             >
-              <Filter size={16} className="mr-1.5" />
-              {filterOptions.find(option => option.id === dateFilter)?.label || 'Zeitraum'}
+              <Filter size={16} className="mr-1.5 text-blue-700" />
+              <span className="text-blue-700 font-medium">
+                {filterOptions.find(option => option.id === dateFilter)?.label || 'Zeitraum'}
+              </span>
             </button>
             
             {showFilterOptions && (
@@ -254,7 +280,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                         setShowFilterOptions(false);
                       }}
                       className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                        dateFilter === option.id ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                        dateFilter === option.id ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
                       }`}
                     >
                       {option.label}
@@ -268,7 +294,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                       // Nicht schließen - lässt Benutzer die Datumsfelder sehen
                     }}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                      dateFilter === 'custom' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                      dateFilter === 'custom' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
                     }`}
                   >
                     Benutzerdefinierter Zeitraum
@@ -279,7 +305,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                     <div className="p-2 border-t mt-2">
                       <div className="flex flex-col space-y-2">
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Von:</label>
+                          <label className="block text-xs text-gray-700 mb-1 font-medium">Von:</label>
                           <input
                             type="date"
                             value={customStartDate}
@@ -288,7 +314,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Bis:</label>
+                          <label className="block text-xs text-gray-700 mb-1 font-medium">Bis:</label>
                           <input
                             type="date"
                             value={customEndDate}
@@ -298,7 +324,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                         </div>
                         <button
                           onClick={() => setShowFilterOptions(false)}
-                          className="w-full bg-blue-500 text-white py-1.5 rounded-md text-sm"
+                          className="w-full bg-blue-600 text-white py-1.5 rounded-md text-sm font-medium"
                         >
                           Anwenden
                         </button>
@@ -313,9 +339,9 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       </div>
       
       {/* Zeitraumanzeige - immer sichtbar */}
-      <div className="text-sm text-gray-600 mb-3 flex items-center border-b pb-2">
-        <Calendar size={16} className="mr-2" />
-        Zeitraum: {getDateRange()}
+      <div className="text-sm text-gray-700 mb-3 flex items-center border-b border-gray-300 pb-2">
+        <Calendar size={16} className="mr-2 text-blue-600" />
+        <span className="font-medium">Zeitraum: {getDateRange()}</span>
       </div>
       
       <div className="h-80">

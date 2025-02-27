@@ -4,6 +4,70 @@ import { Check, X, FileText, Download, Upload } from 'lucide-react';
 import { parseCSVData } from '../../utils/dataUtils';
 import { exportToCSV } from '../../utils/csvExportUtils';
 
+// Hilfsfunktion zum Konvertieren von englischen zu deutschen Monatsnamen
+const convertToGermanDate = (entry) => {
+  if (!entry || !entry.datum) return entry;
+
+  // Kopie des Eintrags erstellen
+  const updatedEntry = { ...entry };
+  
+  // Übersetze englische Monatsnamen zu deutschen
+  const monthTranslation = {
+    'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
+    'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
+    'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember'
+  };
+
+  // Formatprüfung und Konvertierung
+  let datumStr = entry.datum;
+  
+  // Prüfe verschiedene Formate und konvertiere Monatsnamen
+  // Format "13. January, 2025"
+  if (datumStr.includes('.') && datumStr.includes(',')) {
+    const parts = datumStr.split('.');
+    if (parts.length >= 2) {
+      const dayPart = parts[0].trim();
+      let restPart = parts[1].trim();
+      
+      // Jahr entfernen, falls vorhanden
+      if (restPart.includes(',')) {
+        restPart = restPart.split(',')[0].trim();
+      }
+      
+      // Englischen Monatsnamen zu deutschen konvertieren
+      for (const [engMonth, deMonth] of Object.entries(monthTranslation)) {
+        if (restPart.includes(engMonth)) {
+          restPart = restPart.replace(engMonth, deMonth);
+          break;
+        }
+      }
+      
+      updatedEntry.datum = `${dayPart}. ${restPart}`;
+    }
+  } 
+  // Format "January 13, 2025"
+  else if (datumStr.includes(' ') && !datumStr.includes('.')) {
+    const parts = datumStr.split(' ');
+    if (parts.length >= 2) {
+      let monthPart = parts[0].trim();
+      let dayPart = parts[1].trim();
+      
+      // Komma oder Jahr entfernen
+      if (dayPart.includes(',')) {
+        dayPart = dayPart.replace(',', '');
+      }
+      
+      // Englischen Monatsnamen zu deutschen konvertieren
+      monthPart = monthTranslation[monthPart] || monthPart;
+      
+      // In deutsches Format umwandeln: "13. Januar"
+      updatedEntry.datum = `${dayPart}. ${monthPart}`;
+    }
+  }
+  
+  return updatedEntry;
+};
+
 const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
   const [importData, setImportData] = useState(null);
   const [importError, setImportError] = useState('');
@@ -41,11 +105,14 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
         }
         
         const result = parseCSVData(text);
-        const parsedData = result.data;
-        setImportData(parsedData);
+        
+        // WICHTIGE ÄNDERUNG: Monatsnamen zu Deutsch konvertieren
+        const localizedData = result.data.map(convertToGermanDate);
+        
+        setImportData(localizedData);
         
         // Vorschau mit max. 5 Einträgen erstellen
-        setImportPreview(parsedData.slice(0, 5));
+        setImportPreview(localizedData.slice(0, 5));
         
         // Meldung über übersprungene Datensätze und Nullwerte
         let infoMessage = '';
