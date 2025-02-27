@@ -164,8 +164,8 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
   };
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium">Blutdruckdaten importieren/exportieren</h3>
           <button 
@@ -176,8 +176,8 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
           </button>
         </div>
         
-        <div className="mb-6">
-          <div className="flex flex-wrap gap-4 mb-4">
+        <div className="flex-grow overflow-y-auto">
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
             <div className="flex-1 min-w-[280px]">
               <p className="text-sm text-gray-600 mb-4">
                 <strong>Daten importieren:</strong> Wählen Sie eine CSV-Datei mit Blutdruckdaten aus.
@@ -235,7 +235,7 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
           )}
           
           {importPreview.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-4 max-h-[40vh] overflow-y-auto">
               <h4 className="text-sm font-medium mb-2">Vorschau der Importdaten:</h4>
               <div className="overflow-x-auto bg-gray-50 rounded p-2">
                 <table className="min-w-full text-xs">
@@ -276,19 +276,20 @@ const ImportModal = ({ onImport, onClose, data, contextFactors }) => {
           )}
         </div>
         
+        {/* Buttons am unteren Rand fixiert */}
         {importData && importData.length > 0 && (
-          <div className="flex justify-end">
+          <div className="sticky bottom-0 bg-white pt-4 border-t border-gray-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none mr-3"
+              className="w-full sm:w-auto bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
             >
               Abbrechen
             </button>
             <button
               type="button"
               onClick={confirmImport}
-              className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none flex items-center"
+              className="w-full sm:w-auto bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none flex items-center justify-center"
             >
               <Check size={16} className="mr-2" />
               Importieren

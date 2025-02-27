@@ -345,8 +345,8 @@ const EntryFormWithContext = ({
           </div>
           
           <div className="mb-4 border-t border-gray-200 pt-4">
-            <h4 className="font-medium text-gray-700 mb-2">Abend-Messung</h4>
-            <div className="grid grid-cols-3 gap-3">
+          <h4 className="font-medium text-gray-700 mb-2">Abend-Messung</h4>
+          <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
                   Systolisch
@@ -421,26 +421,29 @@ const EntryFormWithContext = ({
           
           {/* Kontextfaktoren-Bereich - vereinfacht auf 3 Optionen pro Faktor */}
           {showContext && (
-            <div className="mb-4 bg-gray-50 p-3 rounded-md">
+            <div className="mb-4 bg-gray-50 p-3 rounded-md max-h-[50vh] overflow-y-auto">
               <p className="text-sm text-gray-600 mb-2">
                 Diese Faktoren können Ihren Blutdruck beeinflussen:
               </p>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
                 {factorComponents.map((factor) => (
-                  <div key={factor.name} className="bg-white p-2 rounded-md shadow-sm">
-                    <div className="flex items-center mb-1">
-                      <span className="text-indigo-500 mr-2">{factor.icon}</span>
-                      <span className="text-sm font-medium">{factor.label}</span>
+                  <div 
+                    key={factor.name} 
+                    className="bg-white p-2 rounded-md shadow-sm flex flex-col"
+                  >
+                    <div className="flex items-center mb-2">
+                      <span className="text-indigo-500 mr-2 flex-shrink-0">{factor.icon}</span>
+                      <span className="text-sm font-medium truncate">{factor.label}</span>
                     </div>
                     
-                    <div className="flex justify-between space-x-2">
+                    <div className="flex space-x-1 flex-grow">
                       {factor.options.map((option) => (
                         <button
                           type="button"
                           key={option.value}
                           onClick={() => updateFactor(factor.name, option.value)}
-                          className={`flex-1 py-2 rounded-md text-xs 
+                          className={`flex-1 py-1.5 rounded-md text-xs truncate 
                             ${contextFactors[factor.name] === option.value
                               ? 'bg-indigo-500 text-white' 
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
@@ -455,17 +458,17 @@ const EntryFormWithContext = ({
             </div>
           )}
           
-          <div className="flex justify-end">
+          <div className="sticky bottom-0 bg-white pt-4 border-t border-gray-200 flex justify-end space-x-3">
             <button
               type="button"
               onClick={onCancel}
-              className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none mr-3"
+              className="w-full sm:w-auto bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
             >
               Abbrechen
             </button>
             <button
               type="submit"
-              className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none flex items-center"
+              className="w-full sm:w-auto bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none flex items-center justify-center"
             >
               <Check size={16} className="mr-2" />
               {isEdit ? 'Aktualisieren' : 'Speichern'}
