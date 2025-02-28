@@ -8,13 +8,14 @@ import useBloodPressureData from './hooks/useBloodPressureData';
 // UI Components
 import StatusMessage from './components/UI/StatusMessage';
 import ToggleViewButtons from './components/UI/ToggleViewButtons';
+import VersionDisplay from './components/UI/VersionDisplay';
 
 // Dashboard Components
 import BloodPressureSummary from './components/Dashboard/BloodPressureSummary';
 import BloodPressureChart from './components/Dashboard/BloodPressureChart';
 import BloodPressureCategoryLegend from './components/Dashboard/BloodPressureCategoryLegend';
 import ContextFactorsTrend from './components/Dashboard/ContextFactorsTrend';
-import AdvancedStatistics from './components/Dashboard/AdvancedStatistics'; // NEU: Erweiterte Statistik importieren
+import AdvancedStatistics from './components/Dashboard/AdvancedStatistics';
 
 // Table Component
 import BloodPressureTable from './components/Table/BloodPressureTable';
@@ -246,6 +247,9 @@ const BlutdruckTracker = () => {
           contextFactors={contextFactors}
         />
       )}
+      
+      {/* Version display */}
+      <VersionDisplay />
     </div>
   );
 };

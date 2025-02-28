@@ -37,27 +37,47 @@ function standardizeDateFormat(dateStr, tag) {
       const parts = dateStr.split('. ');
       day = parts[0].trim();
       
-      const monthParts = parts[1].split(' ');
-      month = monthParts[0].trim();
+      if (parts.length > 1) {
+        const monthParts = parts[1].split(' ');
+        month = monthParts[0].trim();
+      }
     }
     // Format "Februar 26 2025"
     else if (dateStr.includes(' ')) {
       const parts = dateStr.split(' ');
       month = parts[0].trim();
-      day = parts[1].trim();
-    } else {
-      return null; // Ungültiges Format
+      
+      // Behandle Fälle, wo das Tag Kommas oder andere Zeichen enthalten könnte
+      if (parts.length > 1) {
+        day = parts[1].replace(/,/g, '').trim();
+      }
+    }
+    
+    // Fallback, wenn Tag oder Monat nicht extrahiert werden konnten
+    if (!day || !month) {
+      console.warn('Konnte Tag oder Monat nicht aus dem Datum extrahieren:', dateStr);
+      // Versuche, wenigstens einen vernünftigen Wert zurückzugeben
+      day = day || '01';
+      month = month || 'Januar';
     }
     
     // Monat in Zahl umwandeln
     const monthMap = {
       'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
       'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
-      'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+      'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12',
+      // Englische Monatsnamen für den Fall, dass das JSON englische Daten enthält
+      'January': '01', 'February': '02', 'March': '03', 'April': '04',
+      'May': '05', 'June': '06', 'July': '07', 'August': '08',
+      'September': '09', 'October': '10', 'November': '11', 'December': '12'
     };
     
     const monthNum = monthMap[month];
-    if (!monthNum) return null; // Ungültiger Monat
+    if (!monthNum) {
+      console.warn('Unbekannter Monat:', month);
+      // Fallback auf Januar
+      return `${year}-${tag}-${day.padStart(2, '0')}-01`;
+    }
     
     // Tag mit führender Null
     const dayWithZero = day.padStart(2, '0');
@@ -65,8 +85,12 @@ function standardizeDateFormat(dateStr, tag) {
     // Einheitliches Format: "YYYY-Tag-DD-MM"
     return `${year}-${tag}-${dayWithZero}-${monthNum}`;
   } catch (error) {
-    console.error('Fehler bei der Datumsstandarisierung:', error);
-    return null;
+    console.error('Fehler bei der Datumsstandarisierung:', error, dateStr, tag);
+    // Fallback auf ein einfaches Format mit dem heutigen Datum
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    return `${today.getFullYear()}-${tag}-${day}-${month}`;
   }
 }
 
@@ -157,12 +181,18 @@ export async function saveMeasurements(data) {
       store.clear();
       
       // Speichere alle neuen Daten
+      let successCount = 0;
       enhancedData.forEach(measurement => {
-        store.add(measurement);
+        try {
+          store.add(measurement);
+          successCount++;
+        } catch (e) {
+          console.error('Fehler beim Speichern einer Messung:', e, measurement);
+        }
       });
       
       transaction.oncomplete = () => {
-        console.log(`${enhancedData.length} Messungen erfolgreich gespeichert`);
+        console.log(`${successCount} von ${enhancedData.length} Messungen erfolgreich gespeichert`);
         resolve(true);
       };
       
@@ -520,32 +550,79 @@ export async function exportAllData() {
 export async function importAllData(jsonContent) {
   try {
     // JSON parsen
-    const importData = JSON.parse(jsonContent);
+    let importData;
+    try {
+      importData = JSON.parse(jsonContent);
+    } catch (err) {
+      console.error('Fehler beim Parsen der JSON-Datei:', err);
+      throw new Error('Die Datei enthält kein gültiges JSON-Format.');
+    }
     
     // Daten validieren
     if (!importData.measurements || !Array.isArray(importData.measurements)) {
       throw new Error('Ungültiges Backup-Format: Messungen fehlen oder haben falsches Format');
     }
     
-    // Ensure standardized dates for all imported measurements in the CORRECT format
-    const enhancedMeasurements = importData.measurements.map(entry => {
-      // Immer das _standardDate aktualisieren mit der lokalen Funktion
-      const standardDate = standardizeDateFormat(entry.datum, entry.tag);
-      return { ...entry, _standardDate: standardDate };
+    console.log('Import: Backup mit', importData.measurements.length, 'Messungen geladen');
+    
+    // Sicherstellen, dass alle erforderlichen Felder vorhanden sind
+    const validatedMeasurements = importData.measurements.filter(entry => {
+      // Ein gültiger Eintrag muss mindestens id, tag und datum haben
+      if (!entry.id || !entry.tag || !entry.datum) {
+        console.warn('Import: Ungültiger Eintrag ignoriert:', entry);
+        return false;
+      }
+      return true;
     });
     
-    // Messungen importieren (with enhanced measurements)
-    await saveMeasurements(enhancedMeasurements);
+    // Ensure standardized dates for all imported measurements in the CORRECT format
+    const enhancedMeasurements = validatedMeasurements.map(entry => {
+      try {
+        // Immer das _standardDate aktualisieren mit der lokalen Funktion
+        const standardDate = standardizeDateFormat(entry.datum, entry.tag);
+        return { ...entry, _standardDate: standardDate };
+      } catch (e) {
+        console.warn('Import: Fehler bei der Standardisierung des Datums:', entry, e);
+        // Trotzdem den Eintrag zurückgeben, aber mit einem Fallback-_standardDate
+        return { 
+          ...entry, 
+          _standardDate: `${new Date().getFullYear()}-${entry.tag}-01-01` 
+        };
+      }
+    });
+    
+    console.log('Import: Verarbeitet', enhancedMeasurements.length, 'gültige Messungen');
+    
+    try {
+      // Messungen importieren (with enhanced measurements)
+      await saveMeasurements(enhancedMeasurements);
+      console.log('Import: Messungen erfolgreich gespeichert');
+    } catch (e) {
+      console.error('Import: Fehler beim Speichern der Messungen:', e);
+      // Aber weitermachen mit dem Rest des Imports
+    }
     
     // Kontextfaktoren importieren (falls vorhanden)
     if (importData.contextFactors && typeof importData.contextFactors === 'object') {
-      await saveContextFactors(importData.contextFactors);
+      try {
+        await saveContextFactors(importData.contextFactors);
+        console.log('Import: Kontextfaktoren erfolgreich gespeichert');
+      } catch (e) {
+        console.error('Import: Fehler beim Speichern der Kontextfaktoren:', e);
+        // Aber weitermachen mit dem Rest des Imports
+      }
     }
     
     // Einstellungen importieren (falls vorhanden)
     if (importData.settings && typeof importData.settings === 'object') {
-      for (const [key, value] of Object.entries(importData.settings)) {
-        await saveSetting(key, value);
+      try {
+        for (const [key, value] of Object.entries(importData.settings)) {
+          await saveSetting(key, value);
+        }
+        console.log('Import: Einstellungen erfolgreich gespeichert');
+      } catch (e) {
+        console.error('Import: Fehler beim Speichern der Einstellungen:', e);
+        // Aber weitermachen
       }
     }
     
