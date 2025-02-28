@@ -100,14 +100,12 @@ const EntryFormWithContext = ({
   
   // State für Kontextfaktoren
   const [showContext, setShowContext] = useState(false);
-  const [contextFactors, setContextFactors] = useState(contextData || {
-    stress: previousContext?.stress !== undefined ? previousContext.stress : 1,
-    sleep: previousContext?.sleep !== undefined ? previousContext.sleep : 1,
-    activity: previousContext?.activity !== undefined ? previousContext.activity : 1,
-    salt: previousContext?.salt !== undefined ? previousContext.salt : 1,
-    caffeine: previousContext?.caffeine !== undefined ? previousContext.caffeine : 1,
-    alcohol: previousContext?.alcohol !== undefined ? previousContext.alcohol : 0,
-  });
+  const [contextFactors, setContextFactors] = useState(
+    // Bei Bearbeiten eines Eintrags die vorhandenen Kontextdaten verwenden
+    contextData || 
+    // Bei einem neuen Eintrag mit leeren Kontextfaktoren beginnen
+    {}
+  );
   
   // Aktualisiere den Wochentag, wenn sich das Datum ändert
   useEffect(() => {
@@ -133,18 +131,15 @@ const EntryFormWithContext = ({
     
     // Wenn keine Fehler, sende das Formular ab (mit Kontextfaktoren)
     if (Object.keys(errors).length === 0) {
-      // Nur nicht-leere Kontextfaktoren einfügen
-      const contextToSubmit = Object.fromEntries(
-        Object.entries(contextFactors).filter(([_, value]) => value !== undefined)
-      );
-      
+      // Sende die Kontextfaktoren wie sie sind - die leeren wurden bereits entfernt
+      // durch das Toggle-Verhalten von updateFactor
       const result = onSubmit(
         isEdit ? entry.id : undefined, 
         formData, 
-        Object.keys(contextToSubmit).length > 0 ? contextToSubmit : null
+        Object.keys(contextFactors).length > 0 ? contextFactors : null
       );
       
-      if (!result.success) {
+      if (!result.success && !result.duplicate) {
         setFormErrors(result.errors || {});
       }
     }
@@ -152,10 +147,30 @@ const EntryFormWithContext = ({
   
   // Aktualisieren eines Faktors
   const updateFactor = (factor, value) => {
-    setContextFactors(prev => ({
-      ...prev,
-      [factor]: value
-    }));
+    // Wenn der gleiche Wert nochmal angeklickt wird, 
+    // entferne den Faktor (Toggle-Verhalten)
+    if (contextFactors[factor] === value) {
+      setContextFactors(prev => {
+        const newFactors = { ...prev };
+        delete newFactors[factor];
+        return newFactors;
+      });
+    } else {
+      // Ansonsten setze den neuen Wert
+      setContextFactors(prev => ({
+        ...prev,
+        [factor]: value
+      }));
+    }
+  };
+  
+  // Löschen eines Faktors
+  const clearFactor = (factor) => {
+    setContextFactors(prev => {
+      const newFactors = { ...prev };
+      delete newFactors[factor];
+      return newFactors;
+    });
   };
   
   // Komponentenliste für jeden Faktor mit korrekten Icons, Name und verkürzten Optionen (nur 3 pro Faktor)
@@ -296,6 +311,8 @@ const EntryFormWithContext = ({
                 </label>
                 <input 
                   type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   min="80"
                   max="220"
                   name="morgenSys"
@@ -314,6 +331,8 @@ const EntryFormWithContext = ({
                 </label>
                 <input 
                   type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   min="40"
                   max="120"
                   name="morgenDia"
@@ -332,6 +351,8 @@ const EntryFormWithContext = ({
                 </label>
                 <input 
                   type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   min="40"
                   max="200"
                   name="morgenPuls"
@@ -356,6 +377,8 @@ const EntryFormWithContext = ({
                 </label>
                 <input 
                   type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   min="80"
                   max="220"
                   name="abendSys"
@@ -374,6 +397,8 @@ const EntryFormWithContext = ({
                 </label>
                 <input 
                   type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   min="40"
                   max="120"
                   name="abendDia"
@@ -392,6 +417,8 @@ const EntryFormWithContext = ({
                 </label>
                 <input 
                   type="number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   min="40"
                   max="200"
                   name="abendPuls"
@@ -416,7 +443,7 @@ const EntryFormWithContext = ({
             >
               <div className="flex items-center">
                 <Heart size={18} className="text-indigo-500 mr-2" />
-                <span className="font-medium text-gray-700">Kontextfaktoren erfassen</span>
+                <span className="font-medium text-gray-700">Kontextfaktoren erfassen (optional)</span>
               </div>
               <span className="text-gray-500">{showContext ? '▲' : '▼'}</span>
             </button>
@@ -426,7 +453,7 @@ const EntryFormWithContext = ({
           {showContext && (
             <div className="mb-4 bg-gray-50 p-3 rounded-md max-h-[50vh] overflow-y-auto">
               <p className="text-sm text-gray-600 mb-2">
-                Diese Faktoren können Ihren Blutdruck beeinflussen:
+                Diese Faktoren können Ihren Blutdruck beeinflussen (Klicken Sie auf eine Option zum Auswählen, nochmals klicken zum Abwählen):
               </p>
               
               <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
@@ -435,9 +462,21 @@ const EntryFormWithContext = ({
                     key={factor.name} 
                     className="bg-white p-2 rounded-md shadow-sm flex flex-col"
                   >
-                    <div className="flex items-center mb-2">
-                      <span className="text-indigo-500 mr-2 flex-shrink-0">{factor.icon}</span>
-                      <span className="text-sm font-medium truncate">{factor.label}</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center">
+                        <span className="text-indigo-500 mr-2 flex-shrink-0">{factor.icon}</span>
+                        <span className="text-sm font-medium truncate">{factor.label}</span>
+                      </div>
+                      {contextFactors[factor.name] !== undefined && (
+                        <button 
+                          type="button"
+                          onClick={() => clearFactor(factor.name)}
+                          className="text-xs text-gray-400 hover:text-red-500"
+                          title="Auswahl zurücksetzen"
+                        >
+                          ×
+                        </button>
+                      )}
                     </div>
                     
                     <div className="flex space-x-1 flex-grow">
@@ -454,6 +493,13 @@ const EntryFormWithContext = ({
                           {option.label}
                         </button>
                       ))}
+                    </div>
+
+                    {/* Anzeige des Auswahlstatus - mobil-optimiert */}
+                    <div className="mt-1 text-xs text-center">
+                      {contextFactors[factor.name] !== undefined 
+                        ? <span className="text-green-600">✓ {factor.options.find(o => o.value === contextFactors[factor.name])?.label}</span>
+                        : <span className="text-gray-400">Nicht ausgewählt</span>}
                     </div>
                   </div>
                 ))}

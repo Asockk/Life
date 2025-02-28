@@ -368,6 +368,13 @@ const useBloodPressureData = () => {
     setShowReport(prev => !prev);
   }, []);
   
+  // Prüft, ob bereits ein Eintrag für das angegebene Datum existiert
+  const checkExistingEntry = useCallback((formattedDate, tag) => {
+    return data.find(entry => 
+      entry.datum === formattedDate && entry.tag === tag
+    );
+  }, [data]);
+
   // Funktionen zum Hinzufügen, Bearbeiten und Löschen von Einträgen mit Kontextfaktoren
   const addEntry = useCallback((formData, contextData = null) => {
     // Prüfe, ob das Formular gültig ist
@@ -388,32 +395,110 @@ const useBloodPressureData = () => {
       numericValues[field] = formData[field] ? Number(formData[field]) : 0;
     });
     
-    // Neuen Eintrag erstellen
-    const newEntry = {
-      id: Date.now(),
-      tag: formData.tag,
-      datum: displayDate,
-      ...numericValues
-    };
+    // Prüfen, ob bereits ein Eintrag für diesen Tag existiert
+    const existingEntry = checkExistingEntry(displayDate, formData.tag);
     
-    // Zu den Daten hinzufügen
-    setData(prevData => [...prevData, newEntry]);
-    
-    // Kontextfaktoren speichern, falls vorhanden
-    if (contextData && Object.keys(contextData).length > 0) {
-      setContextFactors(prev => ({
-        ...prev,
-        [isoDate]: contextData
-      }));
+    // Falls Eintrag bereits existiert und Dialog-Kontext verfügbar
+    if (existingEntry && openConfirmDialog) {
+      openConfirmDialog({
+        title: "Eintrag überschreiben?",
+        message: `Für ${formData.tag}, ${displayDate} existiert bereits ein Eintrag. Möchten Sie diesen überschreiben?`,
+        onConfirm: () => {
+          // Bestehenden Eintrag aktualisieren
+          const updatedData = data.map(entry => {
+            if (entry.id === existingEntry.id) {
+              return {
+                ...entry,
+                ...numericValues
+              };
+            }
+            return entry;
+          });
+          
+          setData(updatedData);
+          
+          // Kontextfaktoren aktualisieren, falls vorhanden
+          if (contextData && Object.keys(contextData).length > 0) {
+            setContextFactors(prev => ({
+              ...prev,
+              [isoDate]: contextData
+            }));
+            
+            // Korrelationsanalyse aktualisieren
+            setTimeout(analyzeFactorCorrelations, 0);
+          }
+          
+          showStatusMessage("Eintrag aktualisiert", "success");
+        }
+      });
       
-      // Korrelationsanalyse aktualisieren
-      setTimeout(analyzeFactorCorrelations, 0);
+      return { success: false, duplicate: true };
     }
     
-    showStatusMessage("Neuer Eintrag hinzugefügt", "success");
-    
-    return { success: true };
-  }, [showStatusMessage, analyzeFactorCorrelations, formatDateForDisplay]);
+    // Wenn kein Dialog-Kontext oder kein Duplikat gefunden
+    if (!existingEntry) {
+      // Neuen Eintrag erstellen
+      const newEntry = {
+        id: Date.now(),
+        tag: formData.tag,
+        datum: displayDate,
+        ...numericValues
+      };
+      
+      // Zu den Daten hinzufügen
+      setData(prevData => [...prevData, newEntry]);
+      
+      // Kontextfaktoren speichern, falls vorhanden
+      if (contextData && Object.keys(contextData).length > 0) {
+        setContextFactors(prev => ({
+          ...prev,
+          [isoDate]: contextData
+        }));
+        
+        // Korrelationsanalyse aktualisieren
+        setTimeout(analyzeFactorCorrelations, 0);
+      }
+      
+      showStatusMessage("Neuer Eintrag hinzugefügt", "success");
+      
+      return { success: true };
+    } else {
+      // Fallback für Browser ohne Dialog-Kontext
+      const confirmOverwrite = window.confirm(`Für ${formData.tag}, ${displayDate} existiert bereits ein Eintrag. Möchten Sie diesen überschreiben?`);
+      
+      if (confirmOverwrite) {
+        // Bestehenden Eintrag aktualisieren
+        const updatedData = data.map(entry => {
+          if (entry.id === existingEntry.id) {
+            return {
+              ...entry,
+              ...numericValues
+            };
+          }
+          return entry;
+        });
+        
+        setData(updatedData);
+        
+        // Kontextfaktoren aktualisieren, falls vorhanden
+        if (contextData && Object.keys(contextData).length > 0) {
+          setContextFactors(prev => ({
+            ...prev,
+            [isoDate]: contextData
+          }));
+          
+          // Korrelationsanalyse aktualisieren
+          setTimeout(analyzeFactorCorrelations, 0);
+        }
+        
+        showStatusMessage("Eintrag aktualisiert", "success");
+        
+        return { success: true };
+      }
+      
+      return { success: false, duplicate: true };
+    }
+  }, [data, showStatusMessage, analyzeFactorCorrelations, formatDateForDisplay, checkExistingEntry, openConfirmDialog]);
 
   const updateEntry = useCallback((id, formData, contextData = null) => {
     // Prüfe, ob das Formular gültig ist
