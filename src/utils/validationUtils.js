@@ -90,15 +90,8 @@ export const formatDateForDisplay = (dateValue) => {
     const months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
                   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
     
-    // Aktuelles Jahr ermitteln
-    const currentYear = new Date().getFullYear();
-    
-    // Jahreszahl in der Datumsformatierung einschließen, wenn es nicht das aktuelle Jahr ist
-    if (parseInt(year) !== currentYear) {
-      return `${parseInt(day)}. ${months[parseInt(month) - 1]} ${year}`;
-    } else {
-      return `${parseInt(day)}. ${months[parseInt(month) - 1]}`;
-    }
+    // Immer das Jahr anzeigen, unabhängig davon, ob es das aktuelle Jahr ist oder nicht
+    return `${parseInt(day)}. ${months[parseInt(month) - 1]} ${year}`;
   }
   return dateValue;
 };
