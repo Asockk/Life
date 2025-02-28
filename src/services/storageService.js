@@ -11,6 +11,66 @@ const STORES = {
 };
 
 /**
+ * Standardisiertes Datumsformat für internen Vergleich
+ * @param {string} dateStr - Datumsstring im Format "26. Februar 2025" oder ähnlich
+ * @param {string} tag - Wochentag (z.B. "Mi", "Do")
+ * @returns {string} Standardisiertes Datum im Format "YYYY-Tag-DD-MM"
+ */
+function standardizeDateFormat(dateStr, tag) {
+  if (!dateStr || !tag) return null;
+  
+  try {
+    // Jahr extrahieren
+    let year = null;
+    if (dateStr.match(/\b(20\d{2})\b/)) {
+      year = dateStr.match(/\b(20\d{2})\b/)[1];
+    } else {
+      // Aktuelles Jahr als Fallback
+      year = new Date().getFullYear();
+    }
+    
+    // Tag und Monat extrahieren
+    let day, month;
+    
+    // Format "26. Februar 2025"
+    if (dateStr.includes('.')) {
+      const parts = dateStr.split('. ');
+      day = parts[0].trim();
+      
+      const monthParts = parts[1].split(' ');
+      month = monthParts[0].trim();
+    }
+    // Format "Februar 26 2025"
+    else if (dateStr.includes(' ')) {
+      const parts = dateStr.split(' ');
+      month = parts[0].trim();
+      day = parts[1].trim();
+    } else {
+      return null; // Ungültiges Format
+    }
+    
+    // Monat in Zahl umwandeln
+    const monthMap = {
+      'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+      'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+      'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+    };
+    
+    const monthNum = monthMap[month];
+    if (!monthNum) return null; // Ungültiger Monat
+    
+    // Tag mit führender Null
+    const dayWithZero = day.padStart(2, '0');
+    
+    // Einheitliches Format: "YYYY-Tag-DD-MM"
+    return `${year}-${tag}-${dayWithZero}-${monthNum}`;
+  } catch (error) {
+    console.error('Fehler bei der Datumsstandarisierung:', error);
+    return null;
+  }
+}
+
+/**
  * Initialisiert die IndexedDB-Datenbank und erstellt die benötigten Stores
  * @returns {Promise} Promise mit der DB-Verbindung oder Error
  */
@@ -81,6 +141,13 @@ export async function saveMeasurements(data) {
       throw new Error('Daten müssen in einem Array geliefert werden');
     }
     
+    // Ensure all measurements have a standardized date in the CORRECT format
+    const enhancedData = data.map(measurement => {
+      // Immer das _standardDate aktualisieren mit der lokalen Funktion
+      const standardDate = standardizeDateFormat(measurement.datum, measurement.tag);
+      return { ...measurement, _standardDate: standardDate };
+    });
+    
     const db = await initDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([STORES.MEASUREMENTS], 'readwrite');
@@ -90,12 +157,12 @@ export async function saveMeasurements(data) {
       store.clear();
       
       // Speichere alle neuen Daten
-      data.forEach(measurement => {
+      enhancedData.forEach(measurement => {
         store.add(measurement);
       });
       
       transaction.oncomplete = () => {
-        console.log(`${data.length} Messungen erfolgreich gespeichert`);
+        console.log(`${enhancedData.length} Messungen erfolgreich gespeichert`);
         resolve(true);
       };
       
@@ -131,8 +198,17 @@ export async function loadMeasurements() {
       const request = store.getAll();
       
       request.onsuccess = () => {
-        console.log(`${request.result.length} Messungen erfolgreich geladen`);
-        resolve(request.result);
+        const measurements = request.result;
+        
+        // Ensure all loaded measurements have standardized dates in the CORRECT format
+        const enhancedMeasurements = measurements.map(measurement => {
+          // Immer das _standardDate aktualisieren mit der lokalen Funktion
+          const standardDate = standardizeDateFormat(measurement.datum, measurement.tag);
+          return { ...measurement, _standardDate: standardDate };
+        });
+        
+        console.log(`${enhancedMeasurements.length} Messungen erfolgreich geladen`);
+        resolve(enhancedMeasurements);
       };
       
       request.onerror = () => {
@@ -145,7 +221,15 @@ export async function loadMeasurements() {
     // Fallback auf localStorage
     try {
       const storedData = localStorage.getItem('blutdruck_messungen');
-      const parsedData = storedData ? JSON.parse(storedData) : [];
+      let parsedData = storedData ? JSON.parse(storedData) : [];
+      
+      // Ensure all loaded measurements have standardized dates in the CORRECT format
+      parsedData = parsedData.map(measurement => {
+        // Immer das _standardDate aktualisieren mit der lokalen Funktion
+        const standardDate = standardizeDateFormat(measurement.datum, measurement.tag);
+        return { ...measurement, _standardDate: standardDate };
+      });
+      
       console.log(`${parsedData.length} Messungen aus localStorage geladen (Fallback)`);
       return parsedData;
     } catch (e) {
@@ -373,6 +457,13 @@ export async function exportAllData() {
     const measurements = await loadMeasurements();
     const contextFactors = await loadContextFactors();
     
+    // Ensure all measurements have a standardized date in the CORRECT format
+    const enhancedMeasurements = measurements.map(entry => {
+      // Immer das _standardDate aktualisieren mit der lokalen Funktion
+      const standardDate = standardizeDateFormat(entry.datum, entry.tag);
+      return { ...entry, _standardDate: standardDate };
+    });
+    
     // Einstellungen holen (optional)
     let settings = {};
     try {
@@ -388,7 +479,7 @@ export async function exportAllData() {
     const exportData = {
       appVersion: '1.0',
       exportDate: new Date().toISOString(),
-      measurements,
+      measurements: enhancedMeasurements,
       contextFactors,
       settings
     };
@@ -436,8 +527,15 @@ export async function importAllData(jsonContent) {
       throw new Error('Ungültiges Backup-Format: Messungen fehlen oder haben falsches Format');
     }
     
-    // Messungen importieren
-    await saveMeasurements(importData.measurements);
+    // Ensure standardized dates for all imported measurements in the CORRECT format
+    const enhancedMeasurements = importData.measurements.map(entry => {
+      // Immer das _standardDate aktualisieren mit der lokalen Funktion
+      const standardDate = standardizeDateFormat(entry.datum, entry.tag);
+      return { ...entry, _standardDate: standardDate };
+    });
+    
+    // Messungen importieren (with enhanced measurements)
+    await saveMeasurements(enhancedMeasurements);
     
     // Kontextfaktoren importieren (falls vorhanden)
     if (importData.contextFactors && typeof importData.contextFactors === 'object') {
@@ -453,7 +551,7 @@ export async function importAllData(jsonContent) {
     
     return {
       success: true,
-      measurementsCount: importData.measurements.length,
+      measurementsCount: enhancedMeasurements.length,
       contextFactorsCount: importData.contextFactors ? Object.keys(importData.contextFactors).length : 0,
       settingsCount: importData.settings ? Object.keys(importData.settings).length : 0
     };
