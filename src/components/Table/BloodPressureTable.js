@@ -11,13 +11,32 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
   // Flag für Sortierungsrichtung (absteigend = true)
   const [sortDescending, setSortDescending] = useState(true);
   
-  // Verbesserte Funktion zum Sortieren der Daten - verwendet das aktuelle Systemjahr
-  const getSortedData = (dataArray, isDescending) => {
-    // Aktuelles Jahr für Datumsvergleich bei fehlender Jahreszahl
-    const currentYear = new Date().getFullYear();
+  // Extrahiert das Jahr aus einem Datumsstring
+  const extractYearFromDate = (dateStr) => {
+    if (!dateStr) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
     
+    // Suche nach einer vierstelligen Zahl, die das Jahr sein könnte
+    const yearMatch = dateStr.match(/\b(20\d{2})\b/); // 2000-2099
+    if (yearMatch) {
+      return parseInt(yearMatch[1]);
+    }
+    
+    // Kein Jahr gefunden, verwende aktuelles Jahr
+    return new Date().getFullYear();
+  };
+  
+  // Verbesserte Funktion zum Sortieren der Daten
+  const getSortedData = (dataArray, isDescending) => {
     return [...dataArray].sort((a, b) => {
-      // Verbesserte Funktion zum Parsen des Datums in ein vergleichbares Format
+      // Vergleiche Jahre zuerst
+      const yearA = extractYearFromDate(a.datum);
+      const yearB = extractYearFromDate(b.datum);
+      
+      if (yearA !== yearB) {
+        return isDescending ? yearB - yearA : yearA - yearB;
+      }
+      
+      // Wenn die Jahre gleich sind, vergleiche Monat und Tag
       const getDateValue = (dateStr) => {
         if (!dateStr) return new Date(0);
         
@@ -27,48 +46,25 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
           'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
         };
         
-        let day, month, year = currentYear; // Aktuelles Jahr als Standard
+        let day, month, year = yearA; // Verwende das bereits extrahierte Jahr
         
-        // Format "1. Januar 2025" oder "1. Januar"
+        // Format "1. Januar 2024" oder "1. Januar"
         if (dateStr.includes('.')) {
-          const dateParts = dateStr.split('. ');
-          day = parseInt(dateParts[0].trim());
-          
-          if (dateParts.length > 1) {
-            const restParts = dateParts[1].split(' ');
-            month = restParts[0].trim();
-            
-            // Prüfen, ob ein Jahr im Datum enthalten ist
-            if (restParts.length > 1) {
-              const possibleYear = parseInt(restParts[restParts.length - 1]);
-              if (!isNaN(possibleYear) && possibleYear > 2000) {
-                year = possibleYear;
-              }
-            }
-          } else {
-            return new Date(0); // Ungültiges Format
-          }
-        }
-        // Format "Januar 1 2025" oder "Januar 1"
-        else if (dateStr.includes(' ')) {
-          const parts = dateStr.split(' ');
-          month = parts[0].trim();
+          const parts = dateStr.split('. ');
+          day = parseInt(parts[0]);
           
           if (parts.length > 1) {
-            day = parseInt(parts[1].trim());
-            
-            // Prüfen, ob ein Jahr im Datum enthalten ist
-            if (parts.length > 2) {
-              const possibleYear = parseInt(parts[parts.length - 1]);
-              if (!isNaN(possibleYear) && possibleYear > 2000) {
-                year = possibleYear;
-              }
-            }
-          } else {
-            return new Date(0); // Ungültiges Format
+            const monthParts = parts[1].split(' ');
+            month = monthParts[0].trim();
           }
+        }
+        // Format "Januar 1 2024" oder "Januar 1"
+        else if (dateStr.includes(' ')) {
+          const parts = dateStr.split(' ');
+          month = parts[0];
+          day = parseInt(parts[1]);
         } else {
-          return new Date(0); // Unbekanntes Format
+          return new Date(0); // Ungültiges Format
         }
         
         // Überprüfen, ob Monat in der Liste vorhanden ist
@@ -76,7 +72,7 @@ const BloodPressureTable = ({ data, onEdit, onDelete }) => {
           return new Date(0);
         }
         
-        // Gültiges Datum erstellen (mit Jahr, falls vorhanden)
+        // Gültiges Datum erstellen
         return new Date(year, months[month], day);
       };
       

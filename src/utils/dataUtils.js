@@ -64,6 +64,20 @@ function safeParseFloat(value) {
   return parseFloat(strValue.replace(',', '.')) || 0;
 }
 
+// Extrahiert das Jahr aus einem Datumsstring (z.B. "15. Januar 2024" -> 2024)
+function extractYearFromDate(dateStr) {
+  if (!dateStr) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
+  
+  // Suche nach einer vierstelligen Zahl, die das Jahr sein könnte
+  const yearMatch = dateStr.match(/\b(20\d{2})\b/); // 2000-2099
+  if (yearMatch) {
+    return parseInt(yearMatch[1]);
+  }
+  
+  // Kein Jahr gefunden, verwende aktuelles Jahr
+  return new Date().getFullYear();
+}
+
 // Hilfsfunktion, um ein Datum in ein standardisiertes Format zu konvertieren
 // Dies wird für den Vergleich beim Importieren verwendet
 export const standardizeDateFormat = (dateStr, tag) => {
@@ -72,8 +86,9 @@ export const standardizeDateFormat = (dateStr, tag) => {
   if (!parsedDate) return null;
   
   const { germanMonth, germanDay } = parsedDate;
+  const year = extractYearFromDate(dateStr);
   
-  // Standardisierte Form: "Tag-DD-MM", z.B. "Mi-01-01"
+  // Standardisierte Form: "YYYY-Tag-DD-MM", z.B. "2024-Mi-01-01"
   // Dies ist ein internes Format nur für den Vergleich, nicht für die Anzeige
   const monthMap = {
     'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
@@ -84,7 +99,7 @@ export const standardizeDateFormat = (dateStr, tag) => {
   const monthNum = monthMap[germanMonth] || '01';
   const dayNum = germanDay.padStart(2, '0');
   
-  return `${tag}-${dayNum}-${monthNum}`;
+  return `${year}-${tag}-${dayNum}-${monthNum}`;
 };
 
 // Parse CSV-Daten für den Import
@@ -290,6 +305,7 @@ function parseImportedDate(weekdayStr, dateStr) {
     
     // Prüfen ob das Format "Month Day" ist (z.B. "Januar 9")
     let germanDay, germanMonth;
+    let year = null;
     
     // Format: "Januar 9"
     if (dateStr.includes(' ') && !dateStr.includes('.')) {
@@ -297,12 +313,16 @@ function parseImportedDate(weekdayStr, dateStr) {
       germanMonth = parts[0].trim();
       germanDay = parts[1].trim();
       
-      // Jahreszahl entfernen, falls vorhanden
-      if (germanDay.match(/\d{4}/)) {
-        germanDay = germanDay.replace(/\d{4}/, '').trim();
-      }
+      // Jahreszahl suchen
       if (parts.length > 2 && parts[2].match(/\d{4}/)) {
-        // Jahreszahl in Teil 3, nur die ersten beiden Teile verwenden
+        year = parts[2].trim();
+      } else if (germanDay.match(/\d{4}/)) {
+        // Wenn das "Day"-Feld auch das Jahr enthält
+        const dayYearMatch = germanDay.match(/(\d+)[\s,]*(\d{4})/);
+        if (dayYearMatch) {
+          germanDay = dayYearMatch[1];
+          year = dayYearMatch[2];
+        }
       }
     } 
     // Format: "9. Januar"
@@ -314,15 +334,27 @@ function parseImportedDate(weekdayStr, dateStr) {
       if (parts.length > 1) {
         const monthParts = parts[1].split(' ');
         germanMonth = monthParts[0].trim();
+        
+        // Jahreszahl suchen
+        if (monthParts.length > 1 && monthParts[1].match(/\d{4}/)) {
+          year = monthParts[1].trim();
+        }
       }
     }
     // Format: "Januar 9, 2025" oder ähnliches mit Komma
     else if (dateStr.includes(',')) {
       const mainPart = dateStr.split(',')[0].trim();
+      const yearPart = dateStr.split(',')[1]?.trim();
+      
       if (mainPart.includes(' ')) {
         const parts = mainPart.split(' ');
         germanMonth = parts[0].trim();
         germanDay = parts[1].trim();
+      }
+      
+      // Jahreszahl aus dem Teil nach dem Komma extrahieren
+      if (yearPart && yearPart.match(/\d{4}/)) {
+        year = yearPart.match(/\d{4}/)[0];
       }
     }
     
@@ -340,14 +372,17 @@ function parseImportedDate(weekdayStr, dateStr) {
       
       const deMonth = monthTranslation[germanMonth] || germanMonth;
       
-      // Formatiertes Datum im europäischen Format: "Tag, Tag. Monat"
-      const formattedDate = `${germanDay}. ${deMonth}`;
+      // Formatiertes Datum im europäischen Format mit Jahr (falls verfügbar)
+      const formattedDate = year 
+        ? `${germanDay}. ${deMonth} ${year}` 
+        : `${germanDay}. ${deMonth}`;
       
       return {
         formattedDate,
         tagKurz,
         germanDay,
-        germanMonth: deMonth
+        germanMonth: deMonth,
+        year
       };
     }
   } catch (error) {
@@ -359,6 +394,9 @@ function parseImportedDate(weekdayStr, dateStr) {
 
 // Sortiert die Daten nach Datum
 export const sortDataByDate = (data) => {
+  // Aktuelles Jahr für Vergleiche ohne explizites Jahr
+  const currentYear = new Date().getFullYear();
+  
   const monthOrder = {
     'Januar': 1, 'Februar': 2, 'März': 3, 'April': 4, 
     'Mai': 5, 'Juni': 6, 'Juli': 7, 'August': 8, 
@@ -366,15 +404,25 @@ export const sortDataByDate = (data) => {
   };
   
   return [...data].sort((a, b) => {
+    // Versuche, das Jahr zu extrahieren
+    const yearA = extractYearFromDate(a.datum);
+    const yearB = extractYearFromDate(b.datum);
+    
+    // Zuerst nach Jahr sortieren
+    if (yearA !== yearB) {
+      return yearA - yearB;
+    }
+    
+    // Dann nach Monat und Tag sortieren
     let aMonth, aDay, bMonth, bDay;
     
-    // Europäisches Format: "1. Januar"
+    // Europäisches Format: "1. Januar [2024]"
     if (a.datum.includes('.')) {
       const parts = a.datum.split('. ');
       aDay = parseInt(parts[0]);
       aMonth = parts[1].split(' ')[0]; // Falls Jahr enthalten ist
     } 
-    // Amerikanisches Format: "Januar 1"
+    // Amerikanisches Format: "Januar 1 [2024]"
     else if (a.datum.includes(' ')) {
       const parts = a.datum.split(' ');
       aMonth = parts[0];
@@ -417,12 +465,13 @@ function parseDateFromCSV(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') return null;
   
   // Für das Format "1. January, 2025"
-  const europeanFullDateRegex = /^(\d{1,2})\.\s*(\w+),?\s*\d{4}$/;
+  const europeanFullDateRegex = /^(\d{1,2})\.\s*(\w+)(?:,?\s*(\d{4}))?$/;
   const match = dateStr.match(europeanFullDateRegex);
   
   if (match) {
     const day = match[1];
     const month = match[2];
+    const year = match[3]; // Kann undefined sein
     
     // Englische und deutsche Monatsnamen in deutsche umwandeln
     const monthTranslation = {
@@ -435,7 +484,7 @@ function parseDateFromCSV(dateStr) {
     };
     
     const germanMonth = monthTranslation[month] || month;
-    return { germanMonth, germanDay: day };
+    return { germanMonth, germanDay: day, year };
   }
   
   // Wenn das spezielle Format nicht passt, versuche die allgemeine Funktion
@@ -448,8 +497,20 @@ function generalParseDateFromCSV(dateStr) {
   if (!dateStr.trim()) return null;
   
   // Format mit Wochentag entfernen, falls vorhanden
-  if (dateStr.includes(',')) {
-    dateStr = dateStr.split(',')[1].trim();
+  const commaIndex = dateStr.indexOf(',');
+  if (commaIndex !== -1) {
+    const yearPart = dateStr.substring(commaIndex + 1).trim();
+    const yearMatch = yearPart.match(/\d{4}/);
+    const year = yearMatch ? yearMatch[0] : null;
+    
+    dateStr = dateStr.substring(0, commaIndex).trim();
+    
+    // Datum mit extrahiertem Jahr zurückgeben
+    const result = generalParseDateFromCSV(dateStr);
+    if (result) {
+      result.year = year;
+    }
+    return result;
   }
   
   // Formatkorrektur für Daten mit Leerzeichen und Punkt
@@ -457,13 +518,14 @@ function generalParseDateFromCSV(dateStr) {
     dateStr = dateStr.replace(/(\d+)\.(\s+)(\w+)/, '$1.$3');
   }
   
-  // Fall 1: "Month Day" Format (z.B. "Januar 1" oder "January 1")
+  // Fall 1: "Month Day [Year]" Format (z.B. "Januar 1" oder "January 1 2024")
   const americanDateRegex = /^(\w+)\s+(\d{1,2})(?:\s+(\d{4}))?$/;
   const americanDateMatch = dateStr.match(americanDateRegex);
   
   if (americanDateMatch) {
     const month = americanDateMatch[1];
     const day = americanDateMatch[2];
+    const year = americanDateMatch[3]; // Kann undefined sein
     
     // Englische und deutsche Monatsnamen in deutsche umwandeln
     const monthTranslation = {
@@ -476,16 +538,17 @@ function generalParseDateFromCSV(dateStr) {
     };
     
     const germanMonth = monthTranslation[month] || month;
-    return { germanMonth, germanDay: day };
+    return { germanMonth, germanDay: day, year };
   }
   
-  // Fall 2: "Day. Month" Format (z.B. "1. Januar" oder "1. January")
+  // Fall 2: "Day. Month [Year]" Format (z.B. "1. Januar" oder "1. January 2024")
   const europeanDateRegex = /^(\d{1,2})[\.\s]+(\w+)(?:\s+(\d{4}))?$/;
   const europeanDateMatch = dateStr.match(europeanDateRegex);
   
   if (europeanDateMatch) {
     const day = europeanDateMatch[1];
     const month = europeanDateMatch[2];
+    const year = europeanDateMatch[3]; // Kann undefined sein
     
     // Englische und deutsche Monatsnamen in deutsche umwandeln
     const monthTranslation = {
@@ -498,7 +561,7 @@ function generalParseDateFromCSV(dateStr) {
     };
     
     const germanMonth = monthTranslation[month] || month;
-    return { germanMonth, germanDay: day };
+    return { germanMonth, germanDay: day, year };
   }
   
   // Fall 3: "DD.MM.YYYY" Format
@@ -508,6 +571,7 @@ function generalParseDateFromCSV(dateStr) {
   if (shortDateMatch) {
     const day = shortDateMatch[1];
     const monthNum = parseInt(shortDateMatch[2]);
+    const year = shortDateMatch[3]; // Kann undefined sein
     
     // Monate in deutsche Namen umwandeln
     const months = [
@@ -516,7 +580,7 @@ function generalParseDateFromCSV(dateStr) {
     ];
     
     const germanMonth = months[monthNum - 1] || 'Januar';
-    return { germanMonth, germanDay: day };
+    return { germanMonth, germanDay: day, year };
   }
   
   // Fall 4: ISO-Format "YYYY-MM-DD"
@@ -535,7 +599,7 @@ function generalParseDateFromCSV(dateStr) {
     ];
     
     const germanMonth = months[month - 1] || 'Januar';
-    return { germanMonth, germanDay: day };
+    return { germanMonth, germanDay: day, year };
   }
   
   return null;

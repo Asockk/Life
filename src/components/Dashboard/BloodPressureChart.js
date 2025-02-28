@@ -43,13 +43,30 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
   // Prefix für aktuelle Ansicht (morgen oder abend)
   const prefix = viewType === 'morgen' ? 'morgen' : 'abend';
   
+  // Extrahiert das Jahr aus einem Datumsstring
+  const extractYearFromDate = (dateStr) => {
+    if (!dateStr) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
+    
+    // Suche nach einer vierstelligen Zahl, die das Jahr sein könnte
+    const yearMatch = dateStr.match(/\b(20\d{2})\b/); // 2000-2099
+    if (yearMatch) {
+      return parseInt(yearMatch[1]);
+    }
+    
+    // Kein Jahr gefunden, verwende aktuelles Jahr
+    return new Date().getFullYear();
+  };
+  
   // Filtere Daten basierend auf dem ausgewählten Zeitraum
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
     
-    // Konvertiert Datum wie "Januar 15" in ein Date-Objekt
+    // Konvertiert Datum wie "Januar 15" oder "15. Januar 2024" in ein Date-Objekt
     const parseDate = (dateStr) => {
       if (!dateStr) return null;
+      
+      // Jahr extrahieren (falls vorhanden)
+      const year = extractYearFromDate(dateStr);
       
       const months = {
         'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
@@ -57,26 +74,26 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
       };
       
-      // Fall 1: Format "Januar 15"
+      // Fall 1: Format "Januar 15" oder "Januar 15 2024"
       if (dateStr.includes(' ') && !dateStr.includes('.')) {
         const parts = dateStr.split(' ');
         if (parts.length >= 2 && months[parts[0]] !== undefined) {
           const month = parts[0];
           const day = parseInt(parts[1]);
           if (!isNaN(day)) {
-            return new Date(2025, months[month], day);
+            return new Date(year, months[month], day);
           }
         }
       }
       
-      // Fall 2: Format "15. Januar"
+      // Fall 2: Format "15. Januar" oder "15. Januar 2024"
       if (dateStr.includes('.') && dateStr.includes(' ')) {
         const parts = dateStr.split('. ');
         if (parts.length >= 2) {
           const day = parseInt(parts[0]);
-          const month = parts[1].split(' ')[0]; // Falls Jahr enthalten ist
-          if (!isNaN(day) && months[month] !== undefined) {
-            return new Date(2025, months[month], day);
+          const monthPart = parts[1].split(' ')[0]; // Falls Jahr enthalten ist
+          if (!isNaN(day) && months[monthPart] !== undefined) {
+            return new Date(year, months[monthPart], day);
           }
         }
       }
@@ -164,8 +181,15 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       return "Keine Daten";
     }
     
-    // Sortiere nach Datum
+    // Daten nach Datum sortieren, mit Berücksichtigung des Jahrs
     const sortedData = [...filteredData].sort((a, b) => {
+      const aDate = new Date(extractYearFromDate(a.datum), 0, 1); // Jahr wird berücksichtigt
+      const bDate = new Date(extractYearFromDate(b.datum), 0, 1);
+      const yearDiff = aDate - bDate;
+      
+      if (yearDiff !== 0) return yearDiff;
+      
+      // Wenn Jahre gleich sind, nach Monat und Tag sortieren      
       const parseDate = (dateStr) => {
         if (!dateStr) return new Date(0);
         
@@ -175,21 +199,21 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
           'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
         };
         
-        // Format: "Januar 15"
+        // Format: "Januar 15" oder "Januar 15 2024"
         if (dateStr.includes(' ') && !dateStr.includes('.')) {
           const parts = dateStr.split(' ');
           if (parts.length >= 2 && months[parts[0]] !== undefined) {
-            return new Date(2025, months[parts[0]], parseInt(parts[1]));
+            return new Date(extractYearFromDate(dateStr), months[parts[0]], parseInt(parts[1]));
           }
         }
         
-        // Format: "15. Januar"
+        // Format: "15. Januar" oder "15. Januar 2024"
         if (dateStr.includes('.') && dateStr.includes(' ')) {
           const parts = dateStr.split('. ');
           if (parts.length >= 2) {
             const month = parts[1].split(' ')[0];
             if (months[month] !== undefined) {
-              return new Date(2025, months[month], parseInt(parts[0]));
+              return new Date(extractYearFromDate(dateStr), months[month], parseInt(parts[0]));
             }
           }
         }

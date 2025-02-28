@@ -205,31 +205,59 @@ const useBloodPressureData = () => {
     return null;
   }, [contextFactors]);
 
+  // Extrahiert das Jahr aus einem Datumsstring
+  const extractYearFromDate = (dateStr) => {
+    if (!dateStr) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
+    
+    // Suche nach einer vierstelligen Zahl, die das Jahr sein könnte
+    const yearMatch = dateStr.match(/\b(20\d{2})\b/); // 2000-2099
+    if (yearMatch) {
+      return parseInt(yearMatch[1]);
+    }
+    
+    // Kein Jahr gefunden, verwende aktuelles Jahr
+    return new Date().getFullYear();
+  };
+
   // Konvertiert ein Anzeigedatum wie "Januar 15" oder "1. Januar" in das Format "2025-01-15"
   const convertDisplayDateToISO = useCallback((displayDate) => {
     if (!displayDate) return null;
     
-    // Fall 1: Format "Januar 15" (Standardformat)
+    // Jahr aus dem Datumsstring extrahieren (falls vorhanden)
+    const year = extractYearFromDate(displayDate);
+    
+    // Fall 1: Format "Januar 15" oder "Januar 15 2024" (Standardformat)
     if (displayDate.includes(' ') && !displayDate.includes('.')) {
-      const [month, day] = displayDate.split(' ');
+      const parts = displayDate.split(' ');
+      const month = parts[0];
+      let day = parts[1];
+      
+      // Falls der Tag Teil eines Jahr-Formats ist (z.B. "15, 2024"), bereinigen
+      if (day.includes(',')) {
+        day = day.split(',')[0];
+      }
+      
       const months = {
         'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
         'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
         'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
       };
       
-      // Standard-Jahr 2025 verwenden
-      return `2025-${months[month] || '01'}-${day.padStart(2, '0')}`;
+      return `${year}-${months[month] || '01'}-${day.padStart(2, '0')}`;
     }
     
-    // Fall 2: Format "1. Januar" (europäisches Format)
+    // Fall 2: Format "1. Januar" oder "1. Januar 2024" (europäisches Format)
     if (displayDate.includes('.') && displayDate.includes(' ')) {
       let day, month;
       
       if (displayDate.startsWith(displayDate.match(/\d+/)[0])) {
         // Format "1. Januar"
-        day = displayDate.match(/\d+/)[0];
-        month = displayDate.split('. ')[1].trim();
+        const parts = displayDate.split('. ');
+        day = parts[0];
+        
+        // Der Rest könnte "Januar 2024" sein
+        const monthParts = parts[1].split(' ');
+        month = monthParts[0];
       } else {
         // Andere Varianten
         const parts = displayDate.split(' ');
@@ -243,7 +271,7 @@ const useBloodPressureData = () => {
         'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
       };
       
-      return `2025-${months[month] || '01'}-${day.padStart(2, '0')}`;
+      return `${year}-${months[month] || '01'}-${day.padStart(2, '0')}`;
     }
     
     // Fall 3: Bereits im ISO-Format (YYYY-MM-DD)
@@ -385,7 +413,7 @@ const useBloodPressureData = () => {
     showStatusMessage("Neuer Eintrag hinzugefügt", "success");
     
     return { success: true };
-  }, [showStatusMessage, analyzeFactorCorrelations]);
+  }, [showStatusMessage, analyzeFactorCorrelations, formatDateForDisplay]);
 
   const updateEntry = useCallback((id, formData, contextData = null) => {
     // Prüfe, ob das Formular gültig ist
@@ -442,7 +470,7 @@ const useBloodPressureData = () => {
     
     showStatusMessage("Eintrag aktualisiert", "success");
     return { success: true };
-  }, [showStatusMessage, analyzeFactorCorrelations]);
+  }, [showStatusMessage, analyzeFactorCorrelations, formatDateForDisplay]);
 
   // VERBESSERTE deleteEntry-Funktion mit DialogContext
   const deleteEntry = useCallback((id) => {

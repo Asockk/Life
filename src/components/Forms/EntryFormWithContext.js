@@ -3,39 +3,21 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, Calendar, Heart, Moon, Activity, Utensils, Coffee, Wine } from 'lucide-react';
 import { validateBloodPressure, validateForm, getWeekdayFromDate } from '../../utils/validationUtils';
 
-// Parse-Datum Funktion
+// Hilfsfunktion für Datumskonvertierung
 const parseDate = (dateStr) => {
   if (!dateStr) return '';
   
-  // Fall 1: Format "Januar 15" (Standardformat)
+  // Fall 1: Format "Januar 15" oder "Januar 15 2024" (Standardformat)
   if (dateStr.includes(' ') && !dateStr.includes('.')) {
-    const monthName = dateStr.split(' ')[0];
-    const day = dateStr.split(' ')[1];
+    const parts = dateStr.split(' ');
+    let monthName = parts[0];
+    let day = parts[1];
+    let year = parts.length > 2 ? parts[2] : new Date().getFullYear();
     
-    // Monatsnamen in Zahlen umwandeln
-    const months = {
-      'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
-      'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
-      'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
-    };
-    
-    const month = months[monthName] || '01';
-    return `2025-${month}-${day.padStart(2, '0')}`;
-  }
-  
-  // Fall 2: Format "1. Januar" (europäisches Format)
-  if (dateStr.includes('.') && dateStr.includes(' ')) {
-    let day, month;
-    
-    if (dateStr.startsWith(dateStr.match(/\d+/)[0])) {
-      // Format "1. Januar"
-      day = dateStr.match(/\d+/)[0];
-      month = dateStr.split('. ')[1].trim();
-    } else {
-      // Andere Varianten
-      const parts = dateStr.split(' ');
-      month = parts[0];
-      day = parts[1].replace('.', '').trim();
+    // Falls Komma im zweiten Teil (z.B. "Januar 15, 2024")
+    if (day.includes(',')) {
+      day = day.replace(',', '');
+      year = parts[2] || new Date().getFullYear();
     }
     
     // Monatsnamen in Zahlen umwandeln
@@ -45,8 +27,29 @@ const parseDate = (dateStr) => {
       'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
     };
     
-    const month_num = months[month] || '01';
-    return `2025-${month_num}-${day.padStart(2, '0')}`;
+    const month = months[monthName] || '01';
+    return `${year}-${month}-${day.padStart(2, '0')}`;
+  }
+  
+  // Fall 2: Format "1. Januar" oder "1. Januar 2024" (europäisches Format)
+  if (dateStr.includes('.') && dateStr.includes(' ')) {
+    const parts = dateStr.split('. ');
+    let day = parts[0];
+    
+    // Zweiter Teil kann "Januar 2024" oder nur "Januar" sein
+    const monthParts = parts[1].split(' ');
+    let month = monthParts[0];
+    let year = monthParts.length > 1 ? monthParts[1] : new Date().getFullYear();
+    
+    // Monatsnamen in Zahlen umwandeln
+    const months = {
+      'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
+      'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
+      'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+    };
+    
+    const monthNum = months[month] || '01';
+    return `${year}-${monthNum}-${day.padStart(2, '0')}`;
   }
   
   // Fall 3: Bereits im ISO-Format (YYYY-MM-DD)

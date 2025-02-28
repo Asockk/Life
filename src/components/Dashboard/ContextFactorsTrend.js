@@ -16,6 +16,20 @@ const ContextFactorsTrend = ({ contextData }) => {
     { id: 'week', label: 'Letzte Woche' }
   ];
   
+  // Extrahiert das Jahr aus einem Datumsstring
+  const extractYearFromIsoDate = (isoDate) => {
+    if (!isoDate) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
+    
+    // ISO-Datum ist im Format YYYY-MM-DD
+    const match = isoDate.match(/^(\d{4})-/);
+    if (match) {
+      return parseInt(match[1]);
+    }
+    
+    // Kein Jahr gefunden, verwende aktuelles Jahr
+    return new Date().getFullYear();
+  };
+  
   // Gefilterte Kontextdaten basierend auf dem ausgewählten Zeitraum
   const filteredContextData = useMemo(() => {
     if (!contextData || Object.keys(contextData).length === 0) return {};
@@ -73,12 +87,23 @@ const ContextFactorsTrend = ({ contextData }) => {
     return filteredContextData && Object.keys(filteredContextData).length >= 2;
   }, [filteredContextData]);
   
-  // Berechne die aktuellsten 5 Tage aus den gefilterten Daten
+  // Berechne die aktuellsten 5 Tage aus den gefilterten Daten, sortiert nach Jahr und Datum
   const latestDays = useMemo(() => {
     if (!filteredContextData) return [];
     
     return Object.keys(filteredContextData)
-      .sort((a, b) => new Date(b) - new Date(a))
+      .sort((a, b) => {
+        // Zuerst nach Jahren sortieren
+        const yearA = extractYearFromIsoDate(a);
+        const yearB = extractYearFromIsoDate(b);
+        
+        if (yearA !== yearB) {
+          return yearB - yearA; // Absteigend (neuere Jahre zuerst)
+        }
+        
+        // Dann nach Datum innerhalb des Jahres
+        return new Date(b) - new Date(a);
+      })
       .slice(0, 5); // Nur die letzten 5 Tage betrachten
   }, [filteredContextData]);
   
@@ -178,7 +203,17 @@ const ContextFactorsTrend = ({ contextData }) => {
   // Formatiere Datum für Anzeige
   const formatDateForDisplay = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const year = date.getFullYear();
+    const currentYear = new Date().getFullYear();
+    
+    // Füge das Jahr nur hinzu, wenn es nicht das aktuelle Jahr ist
+    const options = { 
+      day: '2-digit', 
+      month: '2-digit',
+      year: year !== currentYear ? 'numeric' : undefined
+    };
+    
+    return date.toLocaleDateString('de-DE', options);
   };
   
   // Berechne ersten und letzten Tag des angezeigten Zeitraums
