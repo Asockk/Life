@@ -45,7 +45,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
   
   // Extrahiert das Jahr aus einem Datumsstring
   const extractYearFromDate = (dateStr) => {
-    if (!dateStr) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
+    if (!dateStr) return null; // Kein Default-Jahr zurückgeben
     
     // Suche nach einer vierstelligen Zahl, die das Jahr sein könnte
     const yearMatch = dateStr.match(/\b(20\d{2})\b/); // 2000-2099
@@ -53,53 +53,73 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       return parseInt(yearMatch[1]);
     }
     
-    // Kein Jahr gefunden, verwende aktuelles Jahr
-    return new Date().getFullYear();
+    return null; // Kein Jahr gefunden
+  };
+  
+  // Parst ein deutsches Datum in ein JavaScript Date-Objekt
+  const parseGermanDate = (dateStr) => {
+    if (!dateStr) return null;
+    
+    // Jahr extrahieren, falls vorhanden
+    const explicitYear = extractYearFromDate(dateStr);
+    
+    // Deutsche Monatsnamen in Zahlen (0-11) für JS Date
+    const months = {
+      'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
+      'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
+      'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
+    };
+    
+    let day, month, year;
+    
+    // Format "Januar 15" oder "Januar 15 2024"
+    if (dateStr.includes(' ') && !dateStr.includes('.')) {
+      const parts = dateStr.split(' ');
+      if (parts.length >= 2 && months[parts[0]] !== undefined) {
+        month = parts[0];
+        day = parseInt(parts[1]);
+        year = explicitYear || new Date().getFullYear(); // Aktuelles Jahr als Fallback
+      }
+    }
+    // Format "15. Januar" oder "15. Januar 2024"
+    else if (dateStr.includes('.') && dateStr.includes(' ')) {
+      const parts = dateStr.split('. ');
+      if (parts.length >= 2) {
+        day = parseInt(parts[0]);
+        const monthPart = parts[1].split(' ')[0]; // Falls Jahr enthalten ist
+        month = monthPart;
+        year = explicitYear || new Date().getFullYear(); // Aktuelles Jahr als Fallback
+      }
+    }
+    
+    if (day && month && months[month] !== undefined) {
+      return new Date(year, months[month], day);
+    }
+    
+    return null;
+  };
+  
+  // Sortiert alle Daten chronologisch nach Datum
+  const sortDataByDate = (dataArray) => {
+    return [...dataArray].sort((a, b) => {
+      const dateA = parseGermanDate(a.datum);
+      const dateB = parseGermanDate(b.datum);
+      
+      if (dateA && dateB) {
+        return dateA - dateB;
+      }
+      
+      // Fallback, wenn Datumobjekte nicht erstellt werden können
+      return 0;
+    });
   };
   
   // Filtere Daten basierend auf dem ausgewählten Zeitraum
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
     
-    // Konvertiert Datum wie "Januar 15" oder "15. Januar 2024" in ein Date-Objekt
-    const parseDate = (dateStr) => {
-      if (!dateStr) return null;
-      
-      // Jahr extrahieren (falls vorhanden)
-      const year = extractYearFromDate(dateStr);
-      
-      const months = {
-        'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
-        'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
-        'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
-      };
-      
-      // Fall 1: Format "Januar 15" oder "Januar 15 2024"
-      if (dateStr.includes(' ') && !dateStr.includes('.')) {
-        const parts = dateStr.split(' ');
-        if (parts.length >= 2 && months[parts[0]] !== undefined) {
-          const month = parts[0];
-          const day = parseInt(parts[1]);
-          if (!isNaN(day)) {
-            return new Date(year, months[month], day);
-          }
-        }
-      }
-      
-      // Fall 2: Format "15. Januar" oder "15. Januar 2024"
-      if (dateStr.includes('.') && dateStr.includes(' ')) {
-        const parts = dateStr.split('. ');
-        if (parts.length >= 2) {
-          const day = parseInt(parts[0]);
-          const monthPart = parts[1].split(' ')[0]; // Falls Jahr enthalten ist
-          if (!isNaN(day) && months[monthPart] !== undefined) {
-            return new Date(year, months[monthPart], day);
-          }
-        }
-      }
-      
-      return null;
-    };
+    // Sortiere Daten zuerst chronologisch
+    const sortedData = sortDataByDate(data);
     
     const now = new Date();
     
@@ -110,8 +130,8 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         
-        return data.filter(item => {
-          const itemDate = parseDate(item.datum);
+        return sortedData.filter(item => {
+          const itemDate = parseGermanDate(item.datum);
           return itemDate && itemDate >= oneMonthAgo && itemDate <= now;
         });
       }
@@ -120,26 +140,26 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         
-        return data.filter(item => {
-          const itemDate = parseDate(item.datum);
+        return sortedData.filter(item => {
+          const itemDate = parseGermanDate(item.datum);
           return itemDate && itemDate >= oneWeekAgo && itemDate <= now;
         });
       }
       case 'custom': {
         // Benutzerdefinierter Zeitraum
-        if (!customStartDate || !customEndDate) return data;
+        if (!customStartDate || !customEndDate) return sortedData;
         
         const startDate = new Date(customStartDate);
         const endDate = new Date(customEndDate);
         
-        return data.filter(item => {
-          const itemDate = parseDate(item.datum);
+        return sortedData.filter(item => {
+          const itemDate = parseGermanDate(item.datum);
           return itemDate && itemDate >= startDate && itemDate <= endDate;
         });
       }
       default:
-        // Alle Daten
-        return data;
+        // Alle Daten (bereits sortiert)
+        return sortedData;
     }
   }, [data, dateFilter, customStartDate, customEndDate]);
   
@@ -181,49 +201,6 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       return "Keine Daten";
     }
     
-    // Daten nach Datum sortieren, mit Berücksichtigung des Jahrs
-    const sortedData = [...filteredData].sort((a, b) => {
-      const aDate = new Date(extractYearFromDate(a.datum), 0, 1); // Jahr wird berücksichtigt
-      const bDate = new Date(extractYearFromDate(b.datum), 0, 1);
-      const yearDiff = aDate - bDate;
-      
-      if (yearDiff !== 0) return yearDiff;
-      
-      // Wenn Jahre gleich sind, nach Monat und Tag sortieren      
-      const parseDate = (dateStr) => {
-        if (!dateStr) return new Date(0);
-        
-        const months = {
-          'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
-          'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
-          'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
-        };
-        
-        // Format: "Januar 15" oder "Januar 15 2024"
-        if (dateStr.includes(' ') && !dateStr.includes('.')) {
-          const parts = dateStr.split(' ');
-          if (parts.length >= 2 && months[parts[0]] !== undefined) {
-            return new Date(extractYearFromDate(dateStr), months[parts[0]], parseInt(parts[1]));
-          }
-        }
-        
-        // Format: "15. Januar" oder "15. Januar 2024"
-        if (dateStr.includes('.') && dateStr.includes(' ')) {
-          const parts = dateStr.split('. ');
-          if (parts.length >= 2) {
-            const month = parts[1].split(' ')[0];
-            if (months[month] !== undefined) {
-              return new Date(extractYearFromDate(dateStr), months[month], parseInt(parts[0]));
-            }
-          }
-        }
-        
-        return new Date(0);
-      };
-      
-      return parseDate(a.datum) - parseDate(b.datum);
-    });
-    
     // Formatiere für Anzeige
     const formatDate = (dateStr) => {
       if (!dateStr) return "";
@@ -232,8 +209,8 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       return dateStr;
     };
     
-    const firstDate = formatDate(sortedData[0].datum);
-    const lastDate = formatDate(sortedData[sortedData.length - 1].datum);
+    const firstDate = formatDate(filteredData[0].datum);
+    const lastDate = formatDate(filteredData[filteredData.length - 1].datum);
     
     return `${firstDate} - ${lastDate}`;
   };

@@ -16,7 +16,7 @@ const ContextFactorsTrend = ({ contextData }) => {
     { id: 'week', label: 'Letzte Woche' }
   ];
   
-  // Extrahiert das Jahr aus einem Datumsstring
+  // Extrahiert das Jahr aus einem ISO-Datumsstring - VERBESSERT FÜR JAHR-SORTIERUNG
   const extractYearFromIsoDate = (isoDate) => {
     if (!isoDate) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
     
@@ -93,6 +93,7 @@ const ContextFactorsTrend = ({ contextData }) => {
     
     return Object.keys(filteredContextData)
       .sort((a, b) => {
+        // VERBESSERT: Korrekte Sortierung nach Jahr
         // Zuerst nach Jahren sortieren
         const yearA = extractYearFromIsoDate(a);
         const yearB = extractYearFromIsoDate(b);

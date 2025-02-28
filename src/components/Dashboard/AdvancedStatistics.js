@@ -16,6 +16,60 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
     { id: 'correlation', label: 'Kontextfaktor-Korrelation' }
   ];
   
+  // Verbesserte Funktion zum Extrahieren des Jahres
+  const extractYearFromDate = (dateStr) => {
+    if (!dateStr) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
+    
+    // Suche nach einer vierstelligen Zahl, die das Jahr sein könnte
+    const yearMatch = dateStr.match(/\b(20\d{2})\b/); // 2000-2099
+    if (yearMatch) {
+      return parseInt(yearMatch[1]);
+    }
+    
+    // Kein Jahr gefunden, verwende aktuelles Jahr
+    return new Date().getFullYear();
+  };
+  
+  // Hilfsfunktion zum Parsen eines Datums
+  const parseDate = (dateStr) => {
+    if (!dateStr) return null;
+    
+    // Jahr extrahieren (falls vorhanden)
+    const year = extractYearFromDate(dateStr);
+    
+    const months = {
+      'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
+      'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
+      'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
+    };
+    
+    // Format: "Januar 15" oder "Januar 15 2024"
+    if (dateStr.includes(' ') && !dateStr.includes('.')) {
+      const parts = dateStr.split(' ');
+      if (parts.length >= 2 && months[parts[0]] !== undefined) {
+        const month = parts[0];
+        const day = parseInt(parts[1]);
+        if (!isNaN(day)) {
+          return new Date(year, months[month], day);
+        }
+      }
+    }
+    
+    // Format: "15. Januar" oder "15. Januar 2024"
+    if (dateStr.includes('.') && dateStr.includes(' ')) {
+      const parts = dateStr.split('. ');
+      if (parts.length >= 2) {
+        const day = parseInt(parts[0]);
+        const monthPart = parts[1].split(' ')[0]; // Falls Jahr enthalten ist
+        if (!isNaN(day) && months[monthPart] !== undefined) {
+          return new Date(year, months[monthPart], day);
+        }
+      }
+    }
+    
+    return null;
+  };
+  
   // ================================================================
   // 1. Tag/Nacht-Rhythmus Analyse
   // ================================================================
@@ -69,8 +123,17 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
       { name: 'Abend', systolisch: avgEvening.sys, diastolisch: avgEvening.dia }
     ];
     
+    // Sortiere die Tage chronologisch
+    const sortedDays = [...daysWithBothValues].sort((a, b) => {
+      const dateA = parseDate(a.datum);
+      const dateB = parseDate(b.datum);
+      
+      if (!dateA || !dateB) return 0;
+      return dateA - dateB;  // Chronologische Sortierung
+    });
+    
     // Daten für den täglichen Verlauf (für alle Tage mit beiden Werten)
-    const dailyPatternData = daysWithBothValues.map(entry => ({
+    const dailyPatternData = sortedDays.map(entry => ({
       datum: entry.datum,
       morgensys: entry.morgenSys,
       morgendi: entry.morgenDia,
@@ -244,20 +307,14 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
                         'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
     
-    // Initialisiere Monatsgruppen
-    const monthGroups = {};
-    for (let i = 1; i <= 12; i++) {
-      monthGroups[i] = {
-        systolicValues: [],
-        diastolicValues: [],
-        count: 0
-      };
-    }
+    // Initialisiere Monatsgruppen mit Jahr-Tracking
+    const monthYearGroups = {};
     
-    // Gruppiere Daten nach Monat
+    // Gruppiere Daten nach Monat und Jahr
     data.forEach(entry => {
-      // Extrahiere Monat aus Datum
+      // Extrahiere Monat und Jahr aus Datum
       let month = null;
+      let year = extractYearFromDate(entry.datum);
       
       // Format: "Januar 15"
       if (entry.datum.includes(' ') && !entry.datum.includes('.')) {
@@ -275,22 +332,34 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
       
       if (!month) return;
       
+      const monthYearKey = `${year}-${month}`;
+      
+      if (!monthYearGroups[monthYearKey]) {
+        monthYearGroups[monthYearKey] = {
+          month,
+          year,
+          systolicValues: [],
+          diastolicValues: [],
+          count: 0
+        };
+      }
+      
       // Sammle alle Systole- und Diastole-Werte
       if (entry.morgenSys > 0 && entry.morgenDia > 0) {
-        monthGroups[month].systolicValues.push(entry.morgenSys);
-        monthGroups[month].diastolicValues.push(entry.morgenDia);
-        monthGroups[month].count++;
+        monthYearGroups[monthYearKey].systolicValues.push(entry.morgenSys);
+        monthYearGroups[monthYearKey].diastolicValues.push(entry.morgenDia);
+        monthYearGroups[monthYearKey].count++;
       }
       
       if (entry.abendSys > 0 && entry.abendDia > 0) {
-        monthGroups[month].systolicValues.push(entry.abendSys);
-        monthGroups[month].diastolicValues.push(entry.abendDia);
-        monthGroups[month].count++;
+        monthYearGroups[monthYearKey].systolicValues.push(entry.abendSys);
+        monthYearGroups[monthYearKey].diastolicValues.push(entry.abendDia);
+        monthYearGroups[monthYearKey].count++;
       }
     });
     
     // Prüfe, ob wir genügend Monate mit Daten haben
-    const monthsWithData = Object.values(monthGroups).filter(group => group.count > 0).length;
+    const monthsWithData = Object.values(monthYearGroups).filter(group => group.count > 0).length;
     
     if (monthsWithData < 2) {
       return { 
@@ -299,28 +368,29 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
       };
     }
     
-    // Berechne Durchschnitt pro Monat
-    const monthlyData = [];
-    
-    for (let i = 1; i <= 12; i++) {
-      const group = monthGroups[i];
-      
-      if (group.count === 0) continue;
-      
+    // Berechne Durchschnitt pro Monat/Jahr
+    const monthlyData = Object.values(monthYearGroups).map(group => {
       const avgSys = Math.round(group.systolicValues.reduce((sum, val) => sum + val, 0) / group.systolicValues.length);
       const avgDia = Math.round(group.diastolicValues.reduce((sum, val) => sum + val, 0) / group.diastolicValues.length);
       
-      monthlyData.push({
-        month: i,
-        name: monthNames[i-1],
+      return {
+        month: group.month,
+        year: group.year,
+        name: monthNames[group.month-1],
+        displayName: `${monthNames[group.month-1]} ${group.year}`,
         systolisch: avgSys,
         diastolisch: avgDia,
         count: group.count
-      });
-    }
+      };
+    });
     
-    // Sortiere nach Monat
-    monthlyData.sort((a, b) => a.month - b.month);
+    // Sortiere nach Jahr und Monat für die korrekte chronologische Reihenfolge
+    monthlyData.sort((a, b) => {
+      if (a.year !== b.year) {
+        return a.year - b.year; // Zuerst nach Jahr sortieren (aufsteigend)
+      }
+      return a.month - b.month; // Dann nach Monat sortieren
+    });
     
     // Gruppiere in Jahreszeiten (wenn möglich)
     const seasons = {
@@ -401,6 +471,9 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
       // Konvertiere Datum für Lookup in contextFactors
       let isoDate = null;
       
+      // Extrahiere das Jahr aus dem Datumsstring
+      const year = extractYearFromDate(entry.datum);
+      
       // Format: "Januar 15"
       if (entry.datum.includes(' ') && !entry.datum.includes('.')) {
         const parts = entry.datum.split(' ');
@@ -414,7 +487,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
         };
         
         if (monthMap[month]) {
-          isoDate = `2025-${monthMap[month]}-${day.padStart(2, '0')}`;
+          isoDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`;
         }
       } 
       // Format: "15. Januar"
@@ -431,7 +504,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
           };
           
           if (monthMap[month]) {
-            isoDate = `2025-${monthMap[month]}-${day.padStart(2, '0')}`;
+            isoDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`;
           }
         }
       }
@@ -683,7 +756,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
                             >
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis dataKey="datum" />
-                              <YAxis domain={[-20, 20]} />
+                              <YAxis domain={[-40, 40]} />
                               <Tooltip 
                                 formatter={(value) => [`${value > 0 ? '+' : ''}${value} mmHg`, '']}
                                 labelFormatter={(label) => `${label}`}
@@ -821,7 +894,11 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
                               margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
                             >
                               <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="name" />
+                              <XAxis 
+                                dataKey="displayName" 
+                                // Verwende benutzerdefinierte Ticks, die das Jahr enthalten
+                                tickFormatter={(value) => value}
+                              />
                               <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
                               <Tooltip 
                                 formatter={(value) => [`${value} mmHg`, '']}
