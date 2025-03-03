@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 import { getBloodPressureCategory } from '../../utils/bloodPressureUtils';
 import { Filter, Calendar, Eye, EyeOff, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
 
-const BloodPressureChart = ({ data, viewType, avgValues }) => {
+const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => {
   // State for mobile optimizations
   const [isMobile, setIsMobile] = useState(false);
   const [expandLegend, setExpandLegend] = useState(false);
@@ -96,6 +96,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       }
     }
     
+    // Check if month is in the list
     if (day && month && months[month] !== undefined) {
       return new Date(year, months[month], day);
     }
@@ -271,33 +272,35 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       const category = getBloodPressureCategory(sys, dia);
       
       return (
-        <div className="custom-tooltip bg-white p-2 sm:p-3 border border-gray-200 shadow-lg rounded-md max-w-[180px] sm:max-w-none">
+        <div className={`custom-tooltip p-2 sm:p-3 border border-gray-200 dark:border-gray-700 shadow-lg rounded-md max-w-[180px] sm:max-w-none ${
+          darkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'
+        }`}>
           <p className="font-medium text-xs sm:text-sm">{label}, {data.datum}</p>
           <div className="grid grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-1 mt-1 text-xs">
             {sys > 0 && (
               <>
-                <span className="text-gray-600">Systolisch:</span>
+                <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Systolisch:</span>
                 <span className="font-medium">{sys} mmHg</span>
               </>
             )}
             
             {dia > 0 && (
               <>
-                <span className="text-gray-600">Diastolisch:</span>
+                <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Diastolisch:</span>
                 <span className="font-medium">{dia} mmHg</span>
               </>
             )}
             
             {puls > 0 && (
               <>
-                <span className="text-gray-600">Puls:</span>
+                <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Puls:</span>
                 <span className="font-medium">{puls} bpm</span>
               </>
             )}
             
             {sys > 0 && dia > 0 && (
               <>
-                <span className="text-gray-600">Kategorie:</span>
+                <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Kategorie:</span>
                 <span className="font-medium" style={{ color: category.color }}>{category.category}</span>
               </>
             )}
@@ -307,56 +310,88 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     }
     
     return null;
-  }, [prefix]);
+  }, [prefix, darkMode]);
   
   // Adjusted mobile legend
   const renderMobileLegend = () => {
     return (
       <div className="mb-2 mt-1">
         <div 
-          className="flex items-center justify-between bg-gray-100 p-2 rounded-md"
+          className={`flex items-center justify-between p-2 rounded-md ${
+            darkMode ? 'bg-gray-700' : 'bg-gray-100'
+          }`}
           onClick={() => setExpandLegend(!expandLegend)}
         >
-          <span className="font-medium text-sm">Linien anzeigen/ausblenden</span>
+          <span className={`font-medium text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+            Linien anzeigen/ausblenden
+          </span>
           {expandLegend ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
         
         {expandLegend && (
           <div className="mt-2 grid grid-cols-2 gap-2 px-1">
             <div 
-              className={`flex items-center p-2 rounded-md ${visibleLines.systolic ? 'bg-red-50' : 'bg-gray-100'}`}
+              className={`flex items-center p-2 rounded-md ${
+                visibleLines.systolic 
+                  ? (darkMode ? 'bg-red-900/30' : 'bg-red-50') 
+                  : (darkMode ? 'bg-gray-700' : 'bg-gray-100')
+              }`}
               onClick={() => toggleLine('systolic')}
             >
               <div className="w-3 h-3 mr-2 rounded-full" style={{ backgroundColor: '#FF4136' }}></div>
-              <span className="text-xs">Systolisch</span>
-              {visibleLines.systolic ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
+              <span className={`text-xs ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Systolisch</span>
+              {visibleLines.systolic ? 
+                <Eye size={14} className="ml-auto" /> : 
+                <EyeOff size={14} className="ml-auto" />
+              }
             </div>
             
             <div 
-              className={`flex items-center p-2 rounded-md ${visibleLines.diastolic ? 'bg-blue-50' : 'bg-gray-100'}`}
+              className={`flex items-center p-2 rounded-md ${
+                visibleLines.diastolic 
+                  ? (darkMode ? 'bg-blue-900/30' : 'bg-blue-50') 
+                  : (darkMode ? 'bg-gray-700' : 'bg-gray-100')
+              }`}
               onClick={() => toggleLine('diastolic')}
             >
               <div className="w-3 h-3 mr-2 rounded-full" style={{ backgroundColor: '#0074D9' }}></div>
-              <span className="text-xs">Diastolisch</span>
-              {visibleLines.diastolic ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
+              <span className={`text-xs ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Diastolisch</span>
+              {visibleLines.diastolic ? 
+                <Eye size={14} className="ml-auto" /> : 
+                <EyeOff size={14} className="ml-auto" />
+              }
             </div>
             
             <div 
-              className={`flex items-center p-2 rounded-md ${visibleLines.pulse ? 'bg-green-50' : 'bg-gray-100'}`}
+              className={`flex items-center p-2 rounded-md ${
+                visibleLines.pulse 
+                  ? (darkMode ? 'bg-green-900/30' : 'bg-green-50') 
+                  : (darkMode ? 'bg-gray-700' : 'bg-gray-100')
+              }`}
               onClick={() => toggleLine('pulse')}
             >
               <div className="w-3 h-3 mr-2 rounded-full" style={{ backgroundColor: '#2ECC40' }}></div>
-              <span className="text-xs">Puls</span>
-              {visibleLines.pulse ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
+              <span className={`text-xs ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Puls</span>
+              {visibleLines.pulse ? 
+                <Eye size={14} className="ml-auto" /> : 
+                <EyeOff size={14} className="ml-auto" />
+              }
             </div>
             
             <div 
-              className={`flex items-center p-2 rounded-md ${visibleLines.references ? 'bg-purple-50' : 'bg-gray-100'}`}
+              className={`flex items-center p-2 rounded-md ${
+                visibleLines.references 
+                  ? (darkMode ? 'bg-purple-900/30' : 'bg-purple-50') 
+                  : (darkMode ? 'bg-gray-700' : 'bg-gray-100')
+              }`}
               onClick={() => toggleLine('references')}
             >
               <div className="flex-1 h-1 mr-2 bg-purple-300" style={{ backgroundImage: 'linear-gradient(to right, transparent 50%, white 50%)', backgroundSize: '6px 100%' }}></div>
-              <span className="text-xs">Referenz</span>
-              {visibleLines.references ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
+              <span className={`text-xs ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Referenz</span>
+              {visibleLines.references ? 
+                <Eye size={14} className="ml-auto" /> : 
+                <EyeOff size={14} className="ml-auto" />
+              }
             </div>
           </div>
         )}
@@ -369,7 +404,11 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     if (!isMobile || filteredData.length <= mobileOptimizedData.length) return null;
     
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2 text-xs text-yellow-800 mb-2">
+      <div className={`border rounded-md p-2 text-xs mb-2 ${
+        darkMode
+          ? 'bg-yellow-900/20 border-yellow-800 text-yellow-200'
+          : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+      }`}>
         <strong>Hinweis:</strong> Es werden {mobileOptimizedData.length} von {filteredData.length} Datenpunkten angezeigt. Verwende die Filter für eine detailliertere Ansicht.
       </div>
     );
@@ -382,14 +421,22 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
   };
   
   return (
-    <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-300 mb-6">
+    <div className={`p-3 sm:p-4 rounded-lg shadow-sm border mb-6 transition-colors duration-200 ${
+      darkMode 
+        ? 'bg-gray-800 text-gray-100 border-gray-700' 
+        : 'bg-white text-gray-800 border-gray-300'
+    }`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
-        <h2 className="text-lg font-semibold text-gray-800 mb-2 sm:mb-0">
+        <h2 className={`text-lg font-semibold mb-2 sm:mb-0 ${
+          darkMode ? 'text-gray-100' : 'text-gray-800'
+        }`}>
           {viewType === 'morgen' ? 'Morgen-Blutdruckwerte' : 'Abend-Blutdruckwerte'}
         </h2>
         
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-sm text-gray-700 font-medium">
+          <div className={`text-sm font-medium ${
+            darkMode ? 'text-gray-300' : 'text-gray-700'
+          }`}>
             {filteredData.length} Messungen
           </div>
           
@@ -397,16 +444,24 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
           <div className="relative flex-1 sm:flex-none">
             <button 
               onClick={() => setShowFilterOptions(!showFilterOptions)}
-              className="flex w-full sm:w-auto items-center justify-between text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md"
+              className={`flex w-full sm:w-auto items-center justify-between text-sm px-3 py-1.5 rounded-md ${
+                darkMode
+                  ? 'bg-blue-900/30 hover:bg-blue-800/40 text-blue-300'
+                  : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+              }`}
             >
-              <Filter size={16} className="mr-1.5 text-blue-700" />
-              <span className="text-blue-700 font-medium">
+              <Filter size={16} className={darkMode ? "text-blue-400 mr-1.5" : "text-blue-700 mr-1.5"} />
+              <span className={darkMode ? "text-blue-300 font-medium" : "text-blue-700 font-medium"}>
                 {filterOptions.find(option => option.id === dateFilter)?.label || 'Zeitraum'}
               </span>
             </button>
             
             {showFilterOptions && (
-              <div className="absolute right-0 mt-1 w-full sm:w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+              <div className={`absolute right-0 mt-1 w-full sm:w-64 rounded-md shadow-lg z-10 border ${
+                darkMode
+                  ? 'bg-gray-800 border-gray-700'
+                  : 'bg-white border-gray-200'
+              }`}>
                 <div className="p-2">
                   {filterOptions.map(option => (
                     <button
@@ -416,7 +471,13 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                         setShowFilterOptions(false);
                       }}
                       className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                        dateFilter === option.id ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
+                        dateFilter === option.id 
+                          ? (darkMode 
+                              ? 'bg-blue-900/30 text-blue-300 font-medium' 
+                              : 'bg-blue-100 text-blue-700 font-medium')
+                          : (darkMode
+                              ? 'hover:bg-gray-700 text-gray-300'
+                              : 'hover:bg-gray-100 text-gray-700')
                       }`}
                     >
                       {option.label}
@@ -430,7 +491,13 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                       // Don't close - let user see the date fields
                     }}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                      dateFilter === 'custom' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
+                      dateFilter === 'custom' 
+                        ? (darkMode 
+                            ? 'bg-blue-900/30 text-blue-300 font-medium' 
+                            : 'bg-blue-100 text-blue-700 font-medium')
+                        : (darkMode
+                            ? 'hover:bg-gray-700 text-gray-300'
+                            : 'hover:bg-gray-100 text-gray-700')
                     }`}
                   >
                     Benutzerdefinierter Zeitraum
@@ -438,29 +505,45 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                   
                   {/* Custom date fields */}
                   {dateFilter === 'custom' && (
-                    <div className="p-2 border-t mt-2">
+                    <div className={`p-2 mt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                       <div className="flex flex-col space-y-2">
                         <div>
-                          <label className="block text-xs text-gray-700 mb-1 font-medium">Von:</label>
+                          <label className={`block text-xs mb-1 font-medium ${
+                            darkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}>Von:</label>
                           <input
                             type="date"
                             value={customStartDate}
                             onChange={(e) => setCustomStartDate(e.target.value)}
-                            className="w-full p-1.5 text-sm border border-gray-300 rounded-md"
+                            className={`w-full p-1.5 text-sm rounded-md ${
+                              darkMode 
+                                ? 'bg-gray-700 border-gray-600 text-gray-200'
+                                : 'border border-gray-300 text-gray-700'
+                            }`}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-700 mb-1 font-medium">Bis:</label>
+                          <label className={`block text-xs mb-1 font-medium ${
+                            darkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}>Bis:</label>
                           <input
                             type="date"
                             value={customEndDate}
                             onChange={(e) => setCustomEndDate(e.target.value)}
-                            className="w-full p-1.5 text-sm border border-gray-300 rounded-md"
+                            className={`w-full p-1.5 text-sm rounded-md ${
+                              darkMode 
+                                ? 'bg-gray-700 border-gray-600 text-gray-200'
+                                : 'border border-gray-300 text-gray-700'
+                            }`}
                           />
                         </div>
                         <button
                           onClick={() => setShowFilterOptions(false)}
-                          className="w-full bg-blue-600 text-white py-1.5 rounded-md text-sm font-medium"
+                          className={`w-full py-1.5 rounded-md text-sm font-medium ${
+                            darkMode
+                              ? 'bg-blue-700 hover:bg-blue-600 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
                         >
                           Anwenden
                         </button>
@@ -476,18 +559,24 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
           {isMobile && (
             <button
               onClick={handleShareChart}
-              className="p-1.5 bg-gray-100 rounded-md"
+              className={`p-1.5 rounded-md ${
+                darkMode ? 'bg-gray-700' : 'bg-gray-100'
+              }`}
               aria-label="Diagramm teilen"
             >
-              <Share2 size={16} className="text-gray-600" />
+              <Share2 size={16} className={darkMode ? "text-gray-300" : "text-gray-600"} />
             </button>
           )}
         </div>
       </div>
       
       {/* Time range display - always visible */}
-      <div className="text-sm text-gray-700 mb-3 flex items-center border-b border-gray-300 pb-2">
-        <Calendar size={16} className="mr-2 text-blue-600" />
+      <div className={`text-sm mb-3 flex items-center border-b pb-2 ${
+        darkMode 
+          ? 'text-gray-300 border-gray-700'
+          : 'text-gray-700 border-gray-300'
+      }`}>
+        <Calendar size={16} className={darkMode ? "mr-2 text-blue-400" : "mr-2 text-blue-600"} />
         <span className="font-medium truncate">Zeitraum: {getDateRange()}</span>
       </div>
       
@@ -511,19 +600,31 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
             }}
             connectNulls={false} // Important: don't connect 0 values
           >
-            <CartesianGrid strokeDasharray="3 3" opacity={0.7} />
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              opacity={0.7} 
+              stroke={darkMode ? "#374151" : "#d1d5db"}
+            />
             <XAxis 
               dataKey="tag" 
-              tick={{ fill: '#333', fontSize: isMobile ? 10 : 12 }}
-              tickLine={{ stroke: '#555' }}
+              tick={{ 
+                fill: darkMode ? '#9ca3af' : '#333', 
+                fontSize: isMobile ? 10 : 12 
+              }}
+              tickLine={{ stroke: darkMode ? '#6b7280' : '#555' }}
               interval={isMobile ? 'preserveEnd' : 0}
+              stroke={darkMode ? "#4b5563" : "#9ca3af"}
             />
             <YAxis 
               domain={[40, 180]} 
-              tick={{ fill: '#333', fontSize: isMobile ? 10 : 12 }}
-              tickLine={{ stroke: '#555' }}
+              tick={{ 
+                fill: darkMode ? '#9ca3af' : '#333', 
+                fontSize: isMobile ? 10 : 12 
+              }}
+              tickLine={{ stroke: darkMode ? '#6b7280' : '#555' }}
               tickCount={isMobile ? 5 : 7}
               width={isMobile ? 22 : 30}
+              stroke={darkMode ? "#4b5563" : "#9ca3af"}
             />
             <Tooltip content={<CustomTooltip />} />
             
@@ -549,7 +650,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                   label={isMobile ? null : {
                     value: "Normal", 
                     position: "right", 
-                    fill: "#2ECC40",
+                    fill: darkMode ? "#4ade80" : "#2ECC40",
                     fontSize: 12,
                     offset: 5
                   }} 
@@ -562,7 +663,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                   label={isMobile ? null : {
                     value: "Hyp. Grad 1", 
                     position: "right", 
-                    fill: "#FF851B",
+                    fill: darkMode ? "#fb923c" : "#FF851B",
                     fontSize: 12,
                     offset: 5
                   }} 
@@ -575,7 +676,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                     label={{
                       value: "Hyp. Grad 2", 
                       position: "right", 
-                      fill: "#FF4136",
+                      fill: darkMode ? "#f87171" : "#FF4136",
                       fontSize: 12,
                       offset: 5
                     }} 
@@ -635,7 +736,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                   label={isMobile ? null : {
                     value: "Ø Sys", 
                     position: "left", 
-                    fill: "#B10DC9",
+                    fill: darkMode ? "#c084fc" : "#B10DC9",
                     fontSize: 11,
                     offset: 5
                   }} 
@@ -648,7 +749,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                   label={isMobile ? null : {
                     value: "Ø Dia", 
                     position: "left", 
-                    fill: "#7FDBFF",
+                    fill: darkMode ? "#93c5fd" : "#7FDBFF",
                     fontSize: 11,
                     offset: 5
                   }} 

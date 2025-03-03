@@ -1,6 +1,6 @@
 // App.js
-import React, { useState, useEffect } from 'react';
-import { Plus, Upload, FileText, Home, PieChart, List, Settings } from 'lucide-react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { Plus, Upload, FileText, Home, PieChart, List, Settings, Sun, Moon } from 'lucide-react';
 
 // Custom Hook
 import useBloodPressureData from './hooks/useBloodPressureData';
@@ -27,7 +27,51 @@ import ImportModal from './components/Forms/ImportModal';
 // Reports
 import MedicalReportGenerator from './components/Reports/MedicalReportGenerator';
 
+// Theme Context
+const ThemeContext = createContext();
+
+export const useTheme = () => useContext(ThemeContext);
+
 const BlutdruckTracker = () => {
+  // Theme state
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('blutdruck-theme');
+      return savedTheme === 'dark' || 
+        (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    return false;
+  });
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
+
+  // Update the HTML class and localStorage when darkMode changes
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (darkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('blutdruck-theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('blutdruck-theme', 'light');
+    }
+  }, [darkMode]);
+
+  // Listen for OS theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e) => {
+      if (!localStorage.getItem('blutdruck-theme')) {
+        setDarkMode(e.matches);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   // Data Hook
   const {
     data,
@@ -200,7 +244,8 @@ const BlutdruckTracker = () => {
           <BloodPressureTable 
             data={data} 
             onEdit={handleEdit} 
-            onDelete={deleteEntry} 
+            onDelete={deleteEntry}
+            darkMode={darkMode}
           />
         );
       case 'settings':
@@ -209,20 +254,20 @@ const BlutdruckTracker = () => {
             <div className="mb-4 mt-2">
               <button 
                 onClick={handleOpenImport}
-                className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg flex items-center justify-center mb-3"
+                className="w-full bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center mb-3"
               >
                 <Upload size={18} className="mr-2" />
                 <span>Import/Export</span>
               </button>
               <button 
                 onClick={handleToggleReport}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg flex items-center justify-center"
+                className="w-full bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white py-3 px-4 rounded-lg flex items-center justify-center"
               >
                 <FileText size={18} className="mr-2" />
                 Ärztlichen Bericht erstellen
               </button>
             </div>
-            <BloodPressureCategoryLegend />
+            <BloodPressureCategoryLegend darkMode={darkMode} />
           </>
         );
       default: // 'home'
@@ -237,24 +282,28 @@ const BlutdruckTracker = () => {
             >
               {/* Swipe instruction - shown only initially */}
               {showSwipeLabel && (
-                <div className="absolute top-0 left-0 right-0 bg-blue-50 text-blue-700 text-xs p-2 text-center rounded-md mb-2 z-10">
+                <div className="absolute top-0 left-0 right-0 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs p-2 text-center rounded-md mb-2 z-10">
                   ← Links/Rechts wischen zum Wechseln zwischen Morgen- und Abendwerten →
                 </div>
               )}
               
               {/* Toggle buttons for morning/evening */}
-              <ToggleViewButtons viewType={viewType} setViewType={setViewType} />
+              <ToggleViewButtons viewType={viewType} setViewType={setViewType} darkMode={darkMode} />
               
               {/* Blood pressure summary */}
               <BloodPressureSummary 
                 avgValues={avgValues} 
                 bpCategory={bpCategory} 
                 minMaxValues={minMaxValues}
+                darkMode={darkMode}
               />
               
               {/* Context factors trend if available */}
               {hasContextData && (
-                <ContextFactorsTrend contextData={contextFactors} />
+                <ContextFactorsTrend 
+                  contextData={contextFactors}
+                  darkMode={darkMode}
+                />
               )}
               
               {/* Blood pressure chart */}
@@ -262,6 +311,7 @@ const BlutdruckTracker = () => {
                 data={dataWithMA} 
                 viewType={viewType} 
                 avgValues={avgValues}
+                darkMode={darkMode}
               />
             </div>
           </>
@@ -270,115 +320,132 @@ const BlutdruckTracker = () => {
   };
 
   return (
-    <div className="mx-auto px-1 py-2 sm:p-3 md:p-4 bg-gray-50 min-h-screen max-w-screen-xl relative">
-      {/* Offline Banner */}
-      {isOffline && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-3 rounded-md">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                Sie sind offline. Die App funktioniert weiterhin, alle Änderungen werden lokal gespeichert.
-              </p>
+    <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
+      <div className="mx-auto px-1 py-2 sm:p-3 md:p-4 bg-gray-50 dark:bg-gray-900 min-h-screen max-w-screen-xl relative transition-colors duration-200">
+        {/* Offline Banner */}
+        {isOffline && (
+          <div className="bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 p-3 mb-3 rounded-md">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700 dark:text-yellow-200">
+                  Sie sind offline. Die App funktioniert weiterhin, alle Änderungen werden lokal gespeichert.
+                </p>
+              </div>
             </div>
           </div>
+        )}
+        
+        {/* Status Message */}
+        <StatusMessage message={statusMessage} />
+        
+        {/* Theme Toggle Button */}
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            onClick={toggleDarkMode}
+            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-200"
+            aria-label={darkMode ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln'}
+          >
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
         </div>
-      )}
-      
-      {/* Status Message */}
-      <StatusMessage message={statusMessage} />
-      
-      {/* Main Content Area */}
-      <div className="mt-1 mb-20">
-        {renderTabContent()}
+        
+        {/* Main Content Area */}
+        <div className="mt-1 mb-20">
+          {renderTabContent()}
+        </div>
+        
+        {/* Mobile bottom navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-around z-10 transition-colors duration-200">
+          <button
+            onClick={() => setActiveTab('home')}
+            className={`flex flex-col items-center p-1 ${activeTab === 'home' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
+          >
+            <Home size={activeTab === 'home' ? 22 : 20} />
+            <span className="text-xs mt-1">Home</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`flex flex-col items-center p-1 ${activeTab === 'stats' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
+          >
+            <PieChart size={activeTab === 'stats' ? 22 : 20} />
+            <span className="text-xs mt-1">Statistik</span>
+          </button>
+          
+          <button
+            onClick={handleAddNew}
+            className="flex flex-col items-center p-1 bg-blue-500 dark:bg-blue-600 text-white -mt-4 rounded-full w-14 h-14 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800"
+          >
+            <Plus size={28} />
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('table')}
+            className={`flex flex-col items-center p-1 ${activeTab === 'table' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
+          >
+            <List size={activeTab === 'table' ? 22 : 20} />
+            <span className="text-xs mt-1">Einträge</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex flex-col items-center p-1 ${activeTab === 'settings' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
+          >
+            <Settings size={activeTab === 'settings' ? 22 : 20} />
+            <span className="text-xs mt-1">Mehr</span>
+          </button>
+        </div>
+        
+        {/* Forms with context capture */}
+        {showAddForm && (
+          <EntryFormWithContext 
+            previousContext={getLatestContextFactors()}
+            onSubmit={handleAddSubmit} 
+            onCancel={() => setShowAddForm(false)}
+            darkMode={darkMode}
+          />
+        )}
+        
+        {showEditForm && currentEntry && (
+          <EntryFormWithContext 
+            isEdit={true}
+            entry={currentEntry}
+            contextData={getContextForDisplayDate(currentEntry.datum)}
+            onSubmit={handleEditSubmit} 
+            onCancel={() => setShowEditForm(false)}
+            darkMode={darkMode}
+          />
+        )}
+        
+        {/* Import/Export Modal */}
+        {showImportModal && (
+          <ImportModal 
+            onImport={importData} 
+            onClose={() => setShowImportModal(false)}
+            data={data}
+            contextFactors={contextFactors}
+            darkMode={darkMode}
+          />
+        )}
+        
+        {/* Medical Report */}
+        {showReport && (
+          <MedicalReportGenerator 
+            data={data}
+            avgValues={avgValues}
+            bpCategory={bpCategory}
+            minMaxValues={minMaxValues}
+            contextFactors={contextFactors}
+            darkMode={darkMode}
+          />
+        )}
       </div>
-      
-      {/* Mobile bottom navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 flex justify-around z-10">
-        <button
-          onClick={() => setActiveTab('home')}
-          className={`flex flex-col items-center p-1 ${activeTab === 'home' ? 'text-blue-600' : 'text-gray-600'}`}
-        >
-          <Home size={activeTab === 'home' ? 22 : 20} />
-          <span className="text-xs mt-1">Home</span>
-        </button>
-        
-        <button
-          onClick={() => setActiveTab('stats')}
-          className={`flex flex-col items-center p-1 ${activeTab === 'stats' ? 'text-blue-600' : 'text-gray-600'}`}
-        >
-          <PieChart size={activeTab === 'stats' ? 22 : 20} />
-          <span className="text-xs mt-1">Statistik</span>
-        </button>
-        
-        <button
-          onClick={handleAddNew}
-          className="flex flex-col items-center p-1 bg-blue-500 text-white -mt-4 rounded-full w-14 h-14 flex items-center justify-center shadow-lg border-4 border-white"
-        >
-          <Plus size={28} />
-        </button>
-        
-        <button
-          onClick={() => setActiveTab('table')}
-          className={`flex flex-col items-center p-1 ${activeTab === 'table' ? 'text-blue-600' : 'text-gray-600'}`}
-        >
-          <List size={activeTab === 'table' ? 22 : 20} />
-          <span className="text-xs mt-1">Einträge</span>
-        </button>
-        
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center p-1 ${activeTab === 'settings' ? 'text-blue-600' : 'text-gray-600'}`}
-        >
-          <Settings size={activeTab === 'settings' ? 22 : 20} />
-          <span className="text-xs mt-1">Mehr</span>
-        </button>
-      </div>
-      
-      {/* Forms with context capture */}
-      {showAddForm && (
-        <EntryFormWithContext 
-          previousContext={getLatestContextFactors()}
-          onSubmit={handleAddSubmit} 
-          onCancel={() => setShowAddForm(false)} 
-        />
-      )}
-      
-      {showEditForm && currentEntry && (
-        <EntryFormWithContext 
-          isEdit={true}
-          entry={currentEntry}
-          contextData={getContextForDisplayDate(currentEntry.datum)}
-          onSubmit={handleEditSubmit} 
-          onCancel={() => setShowEditForm(false)} 
-        />
-      )}
-      
-      {/* Import/Export Modal */}
-      {showImportModal && (
-        <ImportModal 
-          onImport={importData} 
-          onClose={() => setShowImportModal(false)}
-          data={data}
-          contextFactors={contextFactors}
-        />
-      )}
-      
-      {/* Medical Report */}
-      {showReport && (
-        <MedicalReportGenerator 
-          data={data}
-          avgValues={avgValues}
-          bpCategory={bpCategory}
-          minMaxValues={minMaxValues}
-          contextFactors={contextFactors}
-        />
-      )}
-    </div>
+    </ThemeContext.Provider>
   );
 };
 
