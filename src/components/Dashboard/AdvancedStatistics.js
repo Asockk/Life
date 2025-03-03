@@ -1,22 +1,11 @@
 // components/Dashboard/AdvancedStatistics.js
 import React, { useState, useMemo } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+import { Clock, Calendar, TrendingUp, Activity, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
          ResponsiveContainer, ComposedChart, Area, ReferenceLine } from 'recharts';
-import { AlertTriangle, Calendar, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 
 const AdvancedStatistics = ({ data, contextFactors }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState('daynight');
-  
-  // Tabs für die verschiedenen Analysen
-  const tabs = [
-    { id: 'daynight', label: 'Tag/Nacht-Rhythmus' },
-    { id: 'weekday', label: 'Wochentagsanalyse' },
-    { id: 'seasonal', label: 'Jahreszeitliche Schwankungen' },
-    { id: 'correlation', label: 'Kontextfaktor-Korrelation' }
-  ];
-  
-  // Verbesserte Funktion zum Extrahieren des Jahres
+  // Extrahiert das Jahr aus einem Datumsstring
   const extractYearFromDate = (dateStr) => {
     if (!dateStr) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
     
@@ -70,8 +59,81 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
     return null;
   };
   
+  // Hilfsfunktion zum Konvertieren eines Datums im Anzeigeformat in ISO-Format
+  const convertDisplayDateToISO = (displayDate) => {
+    if (!displayDate) return null;
+    
+    const year = extractYearFromDate(displayDate);
+    
+    // Fall 1: Format "Januar 15" oder "Januar 15 2024"
+    if (displayDate.includes(' ') && !displayDate.includes('.')) {
+      const parts = displayDate.split(' ');
+      const month = parts[0];
+      let day = parts[1];
+      
+      // Falls der Tag Teil eines Jahr-Formats ist (z.B. "15, 2024"), bereinigen
+      if (day.includes(',')) {
+        day = day.split(',')[0];
+      }
+      
+      const months = {
+        'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
+        'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
+        'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+      };
+      
+      return `${year}-${months[month] || '01'}-${day.padStart(2, '0')}`;
+    }
+    
+    // Fall 2: Format "1. Januar" oder "1. Januar 2024"
+    if (displayDate.includes('.') && displayDate.includes(' ')) {
+      let day, month;
+      
+      if (displayDate.startsWith(displayDate.match(/\d+/)[0])) {
+        // Format "1. Januar"
+        const parts = displayDate.split('. ');
+        day = parts[0];
+        
+        // Der Rest könnte "Januar 2024" sein
+        const monthParts = parts[1].split(' ');
+        month = monthParts[0];
+      } else {
+        // Andere Varianten
+        const parts = displayDate.split(' ');
+        month = parts[0];
+        day = parts[1].replace('.', '').trim();
+      }
+      
+      const months = {
+        'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04', 
+        'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08', 
+        'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+      };
+      
+      return `${year}-${months[month] || '01'}-${day.padStart(2, '0')}`;
+    }
+    
+    // Fall 3: Bereits im ISO-Format (YYYY-MM-DD)
+    if (displayDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return displayDate;
+    }
+    
+    return null;
+  };
+  
+  // Hilfsfunktion für Standardabweichung-Berechnung
+  const calculateStandardDeviation = (values) => {
+    if (!values || values.length < 2) return 0;
+    
+    const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+    const squareDiffs = values.map(val => Math.pow(val - avg, 2));
+    const variance = squareDiffs.reduce((sum, val) => sum + val, 0) / values.length;
+    
+    return Math.round(Math.sqrt(variance) * 10) / 10;
+  };
+  
   // ================================================================
-  // 1. Tag/Nacht-Rhythmus Analyse
+  // Tag/Nacht-Rhythmus Analyse
   // ================================================================
   const dayNightAnalysis = useMemo(() => {
     if (!data || data.length === 0) return null;
@@ -174,7 +236,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
   }, [data]);
   
   // ================================================================
-  // 2. Wochentagsanalyse
+  // Wochentagsanalyse
   // ================================================================
   const weekdayAnalysis = useMemo(() => {
     if (!data || data.length < 7) return null;
@@ -287,7 +349,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
   }, [data]);
   
   // ================================================================
-  // 3. Jahreszeitliche Schwankungen
+  // Jahreszeitliche Schwankungen
   // ================================================================
   const seasonalAnalysis = useMemo(() => {
     if (!data || data.length < 30) {
@@ -451,10 +513,10 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
       monthsWithData,
       interpretation
     };
-  }, [data]);
+  }, [data, extractYearFromDate]);
   
   // ================================================================
-  // 4. Kontextfaktor-Korrelation
+  // Kontextfaktor-Korrelation
   // ================================================================
   const contextCorrelationAnalysis = useMemo(() => {
     if (!data || !contextFactors || Object.keys(contextFactors).length === 0) {
@@ -469,45 +531,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
     
     data.forEach(entry => {
       // Konvertiere Datum für Lookup in contextFactors
-      let isoDate = null;
-      
-      // Extrahiere das Jahr aus dem Datumsstring
-      const year = extractYearFromDate(entry.datum);
-      
-      // Format: "Januar 15"
-      if (entry.datum.includes(' ') && !entry.datum.includes('.')) {
-        const parts = entry.datum.split(' ');
-        const month = parts[0];
-        const day = parts[1];
-        
-        const monthMap = {
-          'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
-          'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
-          'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
-        };
-        
-        if (monthMap[month]) {
-          isoDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`;
-        }
-      } 
-      // Format: "15. Januar"
-      else if (entry.datum.includes('.')) {
-        const parts = entry.datum.split('. ');
-        if (parts.length > 1) {
-          const day = parts[0];
-          const month = parts[1].split(' ')[0];
-          
-          const monthMap = {
-            'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
-            'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
-            'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
-          };
-          
-          if (monthMap[month]) {
-            isoDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`;
-          }
-        }
-      }
+      const isoDate = convertDisplayDateToISO(entry.datum);
       
       if (!isoDate || !contextFactors[isoDate]) return;
       
@@ -651,330 +675,378 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
       factorAnalysis,
       interpretation
     };
-  }, [data, contextFactors]);
+  }, [data, contextFactors, convertDisplayDateToISO]);
   
-  // ================================================================
-  // Hilfsfunktionen
-  // ================================================================
-  function calculateStandardDeviation(values) {
-    if (!values || values.length < 2) return 0;
-    
-    const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
-    const squareDiffs = values.map(val => Math.pow(val - avg, 2));
-    const variance = squareDiffs.reduce((sum, val) => sum + val, 0) / values.length;
-    
-    return Math.round(Math.sqrt(variance) * 10) / 10;
-  }
+  // State für die Akkordeon-Abschnitte
+  const [expandedSections, setExpandedSections] = useState({
+    daynight: true,
+    weekday: false,
+    seasonal: false,
+    correlation: false
+  });
   
-  // ================================================================
+  // Toggle-Funktion für Akkordeon-Abschnitte
+  const toggleSection = (sectionId) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  };
+  
   // Rendering der UI
-  // ================================================================
   if (!data || data.length === 0) {
     return null;
   }
   
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-      {/* Header mit Toggle */}
-      <div 
-        className="flex justify-between items-center cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <h2 className="text-lg font-semibold">Erweiterte Statistiken &amp; Trends</h2>
-        <div className="text-blue-600">
-          {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-        </div>
-      </div>
+      <h2 className="text-lg font-semibold mb-4">Erweiterte Statistiken &amp; Trends</h2>
       
-      {expanded && (
-        <div className="mt-4">
-          {/* Tab-Navigation */}
-          <div className="flex overflow-x-auto mb-4 border-b">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`px-4 py-2 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'border-b-2 border-blue-500 text-blue-600 font-medium'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
+      {/* Akkordeon-Layout für bessere Mobile-Ansicht */}
+      <div className="space-y-4">
+        {/* 1. Tag/Nacht-Rhythmus */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer"
+            onClick={() => toggleSection('daynight')}
+          >
+            <div className="flex items-center">
+              <Clock size={22} className="text-blue-600 mr-3" />
+              <div>
+                <h3 className="font-medium">Tag/Nacht-Rhythmus</h3>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  {!dayNightAnalysis?.hasEnoughData 
+                    ? "Nicht genügend Daten verfügbar" 
+                    : dayNightAnalysis.timeDiff.sys > 0 
+                      ? `Abends ${dayNightAnalysis.timeDiff.sys > 0 ? '+' : ''}${dayNightAnalysis.timeDiff.sys} mmHg höher als morgens`
+                      : dayNightAnalysis.timeDiff.sys < 0
+                        ? `Morgens ${Math.abs(dayNightAnalysis.timeDiff.sys)} mmHg höher als abends`
+                        : "Stabil über den Tag"}
+                </p>
+              </div>
+            </div>
+            <div>
+              {expandedSections.daynight ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+            </div>
           </div>
           
-          {/* Tab-Inhalte */}
-          <div className="mt-4">
-            {/* 1. Tag/Nacht-Rhythmus */}
-            {activeTab === 'daynight' && (
-              <div>
-                <h3 className="text-md font-medium mb-3 flex items-center">
-                  <Clock size={18} className="mr-2 text-blue-600" /> 
-                  Tag/Nacht-Rhythmus Ihres Blutdrucks
-                </h3>
-                
-                {!dayNightAnalysis?.hasEnoughData ? (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
-                    <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-800">{dayNightAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-2">Durchschnittswerte im Tagesverlauf:</p>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                              data={dayNightAnalysis.chartData}
-                              margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="name" />
-                              <YAxis domain={[60, 180]} />
-                              <Tooltip 
-                                formatter={(value) => [`${value} mmHg`, '']}
-                                labelFormatter={(label) => `${label}-Messung`}
-                              />
-                              <Legend />
-                              <Bar dataKey="systolisch" name="Systolisch" fill="#ff4136" />
-                              <Bar dataKey="diastolisch" name="Diastolisch" fill="#0074d9" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-gray-600 mb-2">Morgen-Abend-Differenzen (Systolisch):</p>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart
-                              data={dayNightAnalysis.dailyPatternData}
-                              margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="datum" />
-                              <YAxis domain={[-40, 40]} />
-                              <Tooltip 
-                                formatter={(value) => [`${value > 0 ? '+' : ''}${value} mmHg`, '']}
-                                labelFormatter={(label) => `${label}`}
-                              />
-                              <Legend />
-                              <Line 
-                                type="monotone" 
-                                dataKey="sysdiff" 
-                                name="Abend-Morgen Differenz" 
-                                stroke="#8884d8" 
-                                strokeWidth={2}
-                              />
-                              <ReferenceLine y={0} stroke="#000" strokeDasharray="3 3" />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
+          {expandedSections.daynight && (
+            <div className="p-4 pt-0 border-t border-gray-100">
+              {!dayNightAnalysis?.hasEnoughData ? (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+                  <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800">{dayNightAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <div className="p-3 bg-blue-50 rounded-md mb-3">
+                      <p className="text-sm">{dayNightAnalysis.interpretation}</p>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50 p-4 rounded-md">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                       <div>
-                        <h4 className="font-medium text-sm mb-2">Morgen-Abend-Vergleich</h4>
-                        <p className="text-sm"><strong>Morgens:</strong> {dayNightAnalysis.avgMorning.sys}/{dayNightAnalysis.avgMorning.dia} mmHg</p>
-                        <p className="text-sm"><strong>Abends:</strong> {dayNightAnalysis.avgEvening.sys}/{dayNightAnalysis.avgEvening.dia} mmHg</p>
-                        <p className="text-sm mt-2">
-                          <strong>Differenz:</strong> 
+                        <p className="text-sm font-medium mb-1">Morgen-Abend-Vergleich:</p>
+                        <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-2 rounded">
+                          <div className="border-r border-gray-200 pr-2">
+                            <p><span className="font-medium">Morgens:</span> {dayNightAnalysis.avgMorning.sys}/{dayNightAnalysis.avgMorning.dia} mmHg</p>
+                          </div>
+                          <div>
+                            <p><span className="font-medium">Abends:</span> {dayNightAnalysis.avgEvening.sys}/{dayNightAnalysis.avgEvening.dia} mmHg</p>
+                          </div>
+                        </div>
+                        <p className="text-sm mt-1">
+                          <span className="font-medium">Differenz:</span> 
                           <span className={dayNightAnalysis.timeDiff.sys > 0 ? 'text-red-600' : 'text-blue-600'}>
                             {' '}{dayNightAnalysis.timeDiff.sys > 0 ? '+' : ''}{dayNightAnalysis.timeDiff.sys}/
                             {dayNightAnalysis.timeDiff.dia > 0 ? '+' : ''}{dayNightAnalysis.timeDiff.dia} mmHg
                           </span>
                         </p>
                       </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-sm mb-2">Tagesrhythmus-Analyse</h4>
-                        <p className="text-sm">{dayNightAnalysis.interpretation}</p>
-                      </div>
                     </div>
-                  </>
-                )}
-              </div>
-            )}
-            
-            {/* 2. Wochentagsanalyse */}
-            {activeTab === 'weekday' && (
-              <div>
-                <h3 className="text-md font-medium mb-3 flex items-center">
-                  <Calendar size={18} className="mr-2 text-blue-600" /> 
-                  Blutdruckschwankungen nach Wochentagen
-                </h3>
-                
-                {!weekdayAnalysis || !weekdayAnalysis.hasEnoughData ? (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
-                    <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-800">
-                      {!weekdayAnalysis ? "Diese Analyse benötigt Daten aus mindestens einer vollen Woche." : 
-                        "Es liegen noch nicht genügend Messungen für alle Wochentage vor."}
-                    </p>
                   </div>
-                ) : (
-                  <>
-                    <div className="h-72 mb-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={weekdayAnalysis.weekdayData.sort((a, b) => a.sort - b.sort)}
-                          margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="shortName" />
-                          <YAxis domain={[60, 180]} />
-                          <Tooltip 
-                            formatter={(value, name) => [
-                              `${value} mmHg`, 
-                              name === 'morgenSys' ? 'Morgen Systolisch' : 
-                              name === 'abendSys' ? 'Abend Systolisch' : name
-                            ]}
-                            labelFormatter={(label) => `Wochentag: ${
-                              weekdayAnalysis.weekdayData.find(d => d.shortName === label)?.name || label
-                            }`}
-                          />
-                          <Legend />
-                          <Bar dataKey="morgenSys" name="Morgen Systolisch" fill="#ff4136" />
-                          <Bar dataKey="abendSys" name="Abend Systolisch" fill="#ff851b" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    
-                    <div className="bg-blue-50 p-4 rounded-md">
-                      <h4 className="font-medium text-sm mb-2">Wochentags-Muster</h4>
-                      <p className="text-sm">{weekdayAnalysis.interpretation}</p>
-                      
-                      <div className="mt-3 grid grid-cols-7 gap-1 text-xs">
-                        {weekdayAnalysis.weekdayData.sort((a, b) => a.sort - b.sort).map(day => (
-                          <div 
-                            key={day.shortName} 
-                            className="p-1 text-center rounded"
-                            style={{ 
-                              backgroundColor: day.morgenSys > 135 ? '#ffeeee' : 
-                                              day.morgenSys < 120 ? '#eeffee' : '#ffffee'
-                            }}
+                  
+                  <p className="text-sm font-medium mb-2">Durchschnittswerte im Tagesverlauf:</p>
+                  <div className="h-60 mb-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={dayNightAnalysis.chartData}
+                        margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis domain={[60, 180]} />
+                        <Tooltip 
+                          formatter={(value) => [`${value} mmHg`, '']}
+                          labelFormatter={(label) => `${label}-Messung`}
+                        />
+                        <Legend />
+                        <Bar dataKey="systolisch" name="Systolisch" fill="#ff4136" />
+                        <Bar dataKey="diastolisch" name="Diastolisch" fill="#0074d9" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Täglicher Verlauf nur anzeigen, wenn genügend Datenpunkte */}
+                  {dayNightAnalysis.dailyPatternData.length > 3 && (
+                    <>
+                      <p className="text-sm font-medium mb-2">Morgen-Abend-Differenzen (Systolisch):</p>
+                      <div className="h-60">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={dayNightAnalysis.dailyPatternData}
+                            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                           >
-                            <div className="font-medium">{day.shortName}</div>
-                            <div className="mt-1">{day.morgenSys > 0 ? day.morgenSys : '-'}</div>
-                          </div>
-                        ))}
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="datum" tick={{fontSize: 10}} />
+                            <YAxis domain={[-40, 40]} />
+                            <Tooltip 
+                              formatter={(value) => [`${value > 0 ? '+' : ''}${value} mmHg`, '']}
+                              labelFormatter={(label) => `${label}`}
+                            />
+                            <Legend />
+                            <Line 
+                              type="monotone" 
+                              dataKey="sysdiff" 
+                              name="Abend-Morgen Differenz" 
+                              stroke="#8884d8" 
+                              strokeWidth={2}
+                            />
+                            <ReferenceLine y={0} stroke="#000" strokeDasharray="3 3" />
+                          </LineChart>
+                        </ResponsiveContainer>
                       </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            
-            {/* 3. Jahreszeitliche Schwankungen */}
-            {activeTab === 'seasonal' && (
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* 2. Wochentagsanalyse */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer"
+            onClick={() => toggleSection('weekday')}
+          >
+            <div className="flex items-center">
+              <Calendar size={22} className="text-green-600 mr-3" />
               <div>
-                <h3 className="text-md font-medium mb-3 flex items-center">
-                  <Calendar size={18} className="mr-2 text-blue-600" /> 
-                  Jahreszeitliche Blutdruckschwankungen
-                </h3>
-                
-                {!seasonalAnalysis?.hasEnoughData ? (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
-                    <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-800">{seasonalAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
+                <h3 className="font-medium">Wochentagsanalyse</h3>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  {!weekdayAnalysis || !weekdayAnalysis.hasEnoughData 
+                    ? "Nicht genügend Daten verfügbar" 
+                    : "Erkennt Muster an verschiedenen Wochentagen"}
+                </p>
+              </div>
+            </div>
+            <div>
+              {expandedSections.weekday ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+            </div>
+          </div>
+          
+          {expandedSections.weekday && (
+            <div className="p-4 pt-0 border-t border-gray-100">
+              {!weekdayAnalysis || !weekdayAnalysis.hasEnoughData ? (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+                  <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800">
+                    {!weekdayAnalysis ? "Diese Analyse benötigt Daten aus mindestens einer vollen Woche." : 
+                      "Es liegen noch nicht genügend Messungen für alle Wochentage vor."}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="p-3 bg-blue-50 rounded-md mb-3">
+                    <p className="text-sm">{weekdayAnalysis.interpretation}</p>
                   </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-2">Monatsübersicht (Systolisch):</p>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart
-                              data={seasonalAnalysis.monthlyData}
-                              margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis 
-                                dataKey="displayName" 
-                                // Verwende benutzerdefinierte Ticks, die das Jahr enthalten
-                                tickFormatter={(value) => value}
-                              />
-                              <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
-                              <Tooltip 
-                                formatter={(value) => [`${value} mmHg`, '']}
-                              />
-                              <Legend />
-                              <Line 
-                                type="monotone" 
-                                dataKey="systolisch" 
-                                name="Systolisch" 
-                                stroke="#ff4136" 
-                                strokeWidth={2}
-                                dot={{ r: 4 }}
-                                activeDot={{ r: 6 }}
-                              />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
+                  
+                  <div className="mt-3 grid grid-cols-7 gap-1 text-xs mb-4">
+                    {weekdayAnalysis.weekdayData.sort((a, b) => a.sort - b.sort).map(day => (
+                      <div 
+                        key={day.shortName} 
+                        className="p-1 text-center rounded"
+                        style={{ 
+                          backgroundColor: day.morgenSys > 135 ? '#ffeeee' : 
+                                          day.morgenSys < 120 ? '#eeffee' : '#ffffee'
+                        }}
+                      >
+                        <div className="font-medium">{day.shortName}</div>
+                        <div className="mt-1">{day.morgenSys > 0 ? day.morgenSys : '-'}</div>
                       </div>
-                      
-                      {seasonalAnalysis.seasonalData.length > 0 && (
-                        <div>
-                          <p className="text-sm text-gray-600 mb-2">Jahreszeitlicher Trend:</p>
-                          <div className="h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart
-                                data={seasonalAnalysis.seasonalData}
-                                margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-                              >
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
-                                <Tooltip 
-                                  formatter={(value) => [`${value} mmHg`, '']}
-                                />
-                                <Legend />
-                                <Bar 
-                                  dataKey="systolisch" 
-                                  name="Systolisch" 
-                                  fill="#ff4136"
-                                  barSize={60}
-                                />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="bg-blue-50 p-4 rounded-md">
-                      <h4 className="font-medium text-sm mb-2">Jahreszeitliche Muster</h4>
-                      <p className="text-sm">{seasonalAnalysis.interpretation}</p>
-                      <p className="text-xs mt-2 text-gray-600">
-                        Daten aus {seasonalAnalysis.monthsWithData} von 12 Monaten verfügbar
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            
-            {/* 4. Kontextfaktor-Korrelation */}
-            {activeTab === 'correlation' && (
-              <div>
-                <h3 className="text-md font-medium mb-3">
-                  Zusammenhang zwischen Kontextfaktoren und Blutdruck
-                </h3>
-                
-                {!contextCorrelationAnalysis?.hasEnoughData ? (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
-                    <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-800">{contextCorrelationAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
+                    ))}
                   </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                      {Object.entries(contextCorrelationAnalysis.factorAnalysis).map(([factor, info]) => (
+                  
+                  <p className="text-sm font-medium mb-2">Blutdruck nach Wochentagen:</p>
+                  <div className="h-60">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={weekdayAnalysis.weekdayData.sort((a, b) => a.sort - b.sort)}
+                        margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="shortName" />
+                        <YAxis domain={[60, 180]} />
+                        <Tooltip 
+                          formatter={(value, name) => [
+                            `${value} mmHg`, 
+                            name === 'morgenSys' ? 'Morgen Systolisch' : 
+                            name === 'abendSys' ? 'Abend Systolisch' : name
+                          ]}
+                          labelFormatter={(label) => `Wochentag: ${
+                            weekdayAnalysis.weekdayData.find(d => d.shortName === label)?.name || label
+                          }`}
+                        />
+                        <Legend />
+                        <Bar dataKey="morgenSys" name="Morgen Systolisch" fill="#ff4136" />
+                        <Bar dataKey="abendSys" name="Abend Systolisch" fill="#ff851b" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* 3. Jahreszeitliche Schwankungen */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer"
+            onClick={() => toggleSection('seasonal')}
+          >
+            <div className="flex items-center">
+              <TrendingUp size={22} className="text-orange-600 mr-3" />
+              <div>
+                <h3 className="font-medium">Jahreszeitliche Schwankungen</h3>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  {!seasonalAnalysis?.hasEnoughData 
+                    ? "Nicht genügend langfristige Daten" 
+                    : `Daten aus ${seasonalAnalysis.monthsWithData} von 12 Monaten verfügbar`}
+                </p>
+              </div>
+            </div>
+            <div>
+              {expandedSections.seasonal ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+            </div>
+          </div>
+          
+          {expandedSections.seasonal && (
+            <div className="p-4 pt-0 border-t border-gray-100">
+              {!seasonalAnalysis?.hasEnoughData ? (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+                  <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800">{seasonalAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="p-3 bg-blue-50 rounded-md mb-3">
+                    <p className="text-sm">{seasonalAnalysis.interpretation}</p>
+                  </div>
+                  
+                  <p className="text-sm font-medium mb-2">Monatlicher Blutdruckverlauf:</p>
+                  <div className="h-60 mb-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={seasonalAnalysis.monthlyData}
+                        margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="displayName" 
+                          tick={{fontSize: 10}}
+                        />
+                        <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
+                        <Tooltip 
+                          formatter={(value) => [`${value} mmHg`, '']}
+                        />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="systolisch" 
+                          name="Systolisch" 
+                          stroke="#ff4136" 
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {seasonalAnalysis.seasonalData.length > 0 && (
+                    <>
+                      <p className="text-sm font-medium mb-2">Jahreszeitliche Trends:</p>
+                      <div className="h-60">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={seasonalAnalysis.seasonalData}
+                            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
+                            <Tooltip 
+                              formatter={(value) => [`${value} mmHg`, '']}
+                            />
+                            <Legend />
+                            <Bar 
+                              dataKey="systolisch" 
+                              name="Systolisch" 
+                              fill="#ff4136"
+                              barSize={60}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* 4. Kontextfaktor-Korrelation */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer"
+            onClick={() => toggleSection('correlation')}
+          >
+            <div className="flex items-center">
+              <Activity size={22} className="text-purple-600 mr-3" />
+              <div>
+                <h3 className="font-medium">Kontextfaktor-Korrelation</h3>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  {!contextCorrelationAnalysis?.hasEnoughData 
+                    ? "Nicht genügend Kontextdaten" 
+                    : "Analysiert Einflussfaktoren auf Ihren Blutdruck"}
+                </p>
+              </div>
+            </div>
+            <div>
+              {expandedSections.correlation ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+            </div>
+          </div>
+          
+          {expandedSections.correlation && (
+            <div className="p-4 pt-0 border-t border-gray-100">
+              {!contextCorrelationAnalysis?.hasEnoughData ? (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+                  <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800">{contextCorrelationAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="p-3 bg-blue-50 rounded-md mb-3">
+                    <p className="text-sm">{contextCorrelationAnalysis.interpretation}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    {Object.entries(contextCorrelationAnalysis.factorAnalysis)
+                      .filter(([_, info]) => info.correlation && info.impact !== 'gering')
+                      .map(([factor, info]) => (
                         <div key={factor} className="bg-gray-50 p-3 rounded-md">
                           <h4 className="font-medium text-sm mb-2">{info.name}</h4>
                           
@@ -990,6 +1062,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
                                     data={info.chartData}
                                     margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
                                   >
+                                    <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="name" />
                                     <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
                                     <Tooltip 
@@ -1030,19 +1103,13 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
                           )}
                         </div>
                       ))}
-                    </div>
-                    
-                    <div className="bg-blue-50 p-4 rounded-md">
-                      <h4 className="font-medium text-sm mb-2">Zusammenfassung der Faktoren</h4>
-                      <p className="text-sm">{contextCorrelationAnalysis.interpretation}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -1,95 +1,156 @@
 // components/Dashboard/BloodPressureSummary.js
 import React from 'react';
-import { ArrowUpCircle, ArrowDownCircle, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Heart } from 'lucide-react';
 
 const BloodPressureSummary = ({ avgValues, bpCategory, minMaxValues }) => {
   const { sys, dia, puls } = avgValues;
-  
-  // Erklärung für die Trendanzeigen
-  const getTrendExplanation = (value, type) => {
+
+  // Verbesserte Bewertungsfunktion für Systolisch/Diastolisch
+  const getBpEvaluation = (type, value) => {
     if (type === 'sys') {
-      if (value > 135) return "erhöht";
-      if (value < 125) return "niedrig";
-      return "normal";
+      if (value < 120) return { status: 'optimal', label: 'Optimal', icon: <Minus size={18} />, color: '#2ECC40' };
+      if (value < 130) return { status: 'normal', label: 'Normal', icon: <Minus size={18} />, color: '#01FF70' };
+      if (value < 140) return { status: 'high-normal', label: 'Hoch normal', icon: <TrendingUp size={18} />, color: '#FFDC00' };
+      if (value < 160) return { status: 'hypertension-1', label: 'Erhöht', icon: <TrendingUp size={18} />, color: '#FF851B' };
+      return { status: 'hypertension-2', label: 'Stark erhöht', icon: <TrendingUp size={18} />, color: '#FF4136' };
     } else { // dia
-      if (value > 70) return "erhöht";
-      if (value < 65) return "niedrig";
-      return "normal";
+      if (value < 80) return { status: 'optimal', label: 'Optimal', icon: <Minus size={18} />, color: '#2ECC40' };
+      if (value < 85) return { status: 'normal', label: 'Normal', icon: <Minus size={18} />, color: '#01FF70' };
+      if (value < 90) return { status: 'high-normal', label: 'Hoch normal', icon: <TrendingUp size={18} />, color: '#FFDC00' };
+      if (value < 100) return { status: 'hypertension-1', label: 'Erhöht', icon: <TrendingUp size={18} />, color: '#FF851B' };
+      return { status: 'hypertension-2', label: 'Stark erhöht', icon: <TrendingUp size={18} />, color: '#FF4136' };
     }
   };
+
+  // Bewertungen ermitteln
+  const sysEvaluation = getBpEvaluation('sys', sys);
+  const diaEvaluation = getBpEvaluation('dia', dia);
+
+  // Anzeige des Pulszustands
+  const getPulseState = (value) => {
+    if (value < 60) return { label: 'Niedrig', color: '#0074D9' };
+    if (value > 100) return { label: 'Hoch', color: '#FF851B' };
+    return { label: 'Normal', color: '#2ECC40' };
+  };
   
+  const pulseState = getPulseState(puls);
+
   return (
     <div className="mb-4">
       <div className="bg-white p-4 rounded-lg shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          {/* Durchschnittswerte mit Trend */}
-          <div className="flex-1 mb-4 md:mb-0">
-            <div className="flex items-center mb-1">
-              <h3 className="text-sm font-medium text-gray-500 mr-2">Durchschnitt</h3>
-              <span 
-                className="px-2 py-0.5 rounded-full text-xs font-medium"
-                style={{ backgroundColor: bpCategory.color + '30', color: bpCategory.color }}
+        {/* Hauptanzeige mit verbessertem Layout */}
+        <div className="flex flex-col space-y-4">
+          {/* Oberer Bereich: Durchschnittswerte und Kategorie */}
+          <div className="border-b pb-3">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Durchschnittswerte</h3>
+            
+            <div className="flex items-end justify-between">
+              <div className="flex items-baseline">
+                <span className="text-3xl font-bold">{sys}/{dia}</span>
+                <span className="text-lg ml-1 text-gray-500">mmHg</span>
+              </div>
+              
+              <div 
+                className="px-3 py-1 rounded-full text-sm font-medium"
+                style={{ 
+                  backgroundColor: `${bpCategory.color}25`, 
+                  color: bpCategory.color
+                }}
               >
                 {bpCategory.category}
-              </span>
+              </div>
             </div>
             
-            {/* Blutdruckwerte und Puls */}
-            <div className="flex items-center mb-2 md:mb-0">
-              <div className="text-2xl font-bold">{sys}/{dia}</div>
-              <div className="text-lg ml-1">mmHg</div>
-              <div className="text-sm text-gray-500 ml-3">Puls: {puls}</div>
-            </div>
-            
-            {/* Trend Icons responsive angeordnet */}
-            <div className="flex items-center mt-2 space-x-6">
-              <div className="flex flex-col items-center" title="Systolischer Trend">
-                {sys > 135 ? (
-                  <ArrowUpCircle size={28} color="#FF4136" strokeWidth={2.5} />
-                ) : sys < 125 ? (
-                  <ArrowDownCircle size={28} color="#0074D9" strokeWidth={2.5} />
-                ) : (
-                  <Minus size={28} color="#2ECC40" strokeWidth={2.5} />
-                )}
-                <span className="text-xs sm:text-sm font-medium mt-1">Sys: {getTrendExplanation(sys, 'sys')}</span>
-              </div>
-              <div className="flex flex-col items-center" title="Diastolischer Trend">
-                {dia > 70 ? (
-                  <ArrowUpCircle size={28} color="#FF4136" strokeWidth={2.5} />
-                ) : dia < 65 ? (
-                  <ArrowDownCircle size={28} color="#0074D9" strokeWidth={2.5} />
-                ) : (
-                  <Minus size={28} color="#2ECC40" strokeWidth={2.5} />
-                )}
-                <span className="text-xs sm:text-sm font-medium mt-1">Dia: {getTrendExplanation(dia, 'dia')}</span>
-              </div>
+            <div className="flex items-center mt-1 text-gray-600">
+              <Heart size={16} className="mr-1" />
+              <span className="text-sm">Puls: <span className="font-medium" style={{ color: pulseState.color }}>{puls} bpm</span></span>
             </div>
           </div>
           
-          {/* Min/Max Werte - responsive */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Unterer Bereich: Bewertung und Min/Max-Werte */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Bewertung */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Systolisch Min/Max</h3>
-              <div className="flex items-center space-x-3">
-                <div className="text-lg sm:text-xl font-bold text-blue-600">
-                  {minMaxValues.sysMin}
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Bewertung</h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium">Systolisch</span>
+                    <div className="h-1 bg-gray-200 w-full mt-1 mb-1" />
+                  </div>
+                  <div className="flex items-center">
+                    <div 
+                      className="p-1 rounded-full mr-2" 
+                      style={{ color: sysEvaluation.color, backgroundColor: `${sysEvaluation.color}15` }}
+                    >
+                      {sysEvaluation.icon}
+                    </div>
+                    <span className="text-sm" style={{ color: sysEvaluation.color }}>{sysEvaluation.label}</span>
+                  </div>
                 </div>
-                <span className="text-gray-400">/</span>
-                <div className="text-lg sm:text-xl font-bold text-red-600">
-                  {minMaxValues.sysMax}
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium">Diastolisch</span>
+                    <div className="h-1 bg-gray-200 w-full mt-1 mb-1" />
+                  </div>
+                  <div className="flex items-center">
+                    <div 
+                      className="p-1 rounded-full mr-2" 
+                      style={{ color: diaEvaluation.color, backgroundColor: `${diaEvaluation.color}15` }}
+                    >
+                      {diaEvaluation.icon}
+                    </div>
+                    <span className="text-sm" style={{ color: diaEvaluation.color }}>{diaEvaluation.label}</span>
+                  </div>
                 </div>
               </div>
             </div>
             
+            {/* Min/Max Werte */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Diastolisch Min/Max</h3>
-              <div className="flex items-center space-x-3">
-                <div className="text-lg sm:text-xl font-bold text-blue-600">
-                  {minMaxValues.diaMin}
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Minima / Maxima</h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm font-medium">Systolisch</span>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-lg font-medium text-blue-600">{minMaxValues.sysMin}</span>
+                    <div className="flex-1 px-2">
+                      <div className="h-1 bg-blue-100 w-full relative">
+                        <div 
+                          className="absolute h-1 bg-gradient-to-r from-blue-500 to-red-500"
+                          style={{ 
+                            left: '0%', 
+                            width: '100%' 
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-lg font-medium text-red-600">{minMaxValues.sysMax}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 text-center">mmHg</div>
                 </div>
-                <span className="text-gray-400">/</span>
-                <div className="text-lg sm:text-xl font-bold text-red-600">
-                  {minMaxValues.diaMax}
+                
+                <div>
+                  <span className="text-sm font-medium">Diastolisch</span>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-lg font-medium text-blue-600">{minMaxValues.diaMin}</span>
+                    <div className="flex-1 px-2">
+                      <div className="h-1 bg-blue-100 w-full relative">
+                        <div 
+                          className="absolute h-1 bg-gradient-to-r from-blue-500 to-red-500"
+                          style={{ 
+                            left: '0%', 
+                            width: '100%' 
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-lg font-medium text-red-600">{minMaxValues.diaMax}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 text-center">mmHg</div>
                 </div>
               </div>
             </div>

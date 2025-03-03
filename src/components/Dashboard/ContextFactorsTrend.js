@@ -1,159 +1,41 @@
 // components/Dashboard/ContextFactorsTrend.js
-import React, { useMemo, useState } from 'react';
-import { Heart, Moon, Activity, Utensils, Coffee, Wine, ArrowUp, ArrowDown, Minus, Filter, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, Coffee, Utensils, Moon, Activity, Wine, ArrowUp, ArrowDown, Minus, Calendar, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 
 const ContextFactorsTrend = ({ contextData }) => {
-  // Zeitraumfilter-State
-  const [dateFilter, setDateFilter] = useState('all'); // 'all', 'month', 'week', 'custom'
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
+  // State für Details anzeigen/ausblenden
+  const [showDetails, setShowDetails] = useState(false);
+  const [dateFilter, setDateFilter] = useState('all');
   const [showFilterOptions, setShowFilterOptions] = useState(false);
-  
-  // Verfügbare Zeiträume
-  const filterOptions = [
-    { id: 'all', label: 'Alle Daten' },
-    { id: 'month', label: 'Letzter Monat' },
-    { id: 'week', label: 'Letzte Woche' }
-  ];
-  
-  // Extrahiert das Jahr aus einem ISO-Datumsstring - VERBESSERT FÜR JAHR-SORTIERUNG
-  const extractYearFromIsoDate = (isoDate) => {
-    if (!isoDate) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
-    
-    // ISO-Datum ist im Format YYYY-MM-DD
-    const match = isoDate.match(/^(\d{4})-/);
-    if (match) {
-      return parseInt(match[1]);
-    }
-    
-    // Kein Jahr gefunden, verwende aktuelles Jahr
-    return new Date().getFullYear();
-  };
-  
-  // Gefilterte Kontextdaten basierend auf dem ausgewählten Zeitraum
-  const filteredContextData = useMemo(() => {
-    if (!contextData || Object.keys(contextData).length === 0) return {};
-    
-    const now = new Date();
-    
-    // Filterdaten basierend auf dem gewählten Zeitraum
-    switch (dateFilter) {
-      case 'month': {
-        // Letzter Monat
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        
-        return Object.fromEntries(
-          Object.entries(contextData).filter(([date]) => {
-            const dateObj = new Date(date);
-            return dateObj >= oneMonthAgo && dateObj <= now;
-          })
-        );
-      }
-      case 'week': {
-        // Letzte Woche
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        
-        return Object.fromEntries(
-          Object.entries(contextData).filter(([date]) => {
-            const dateObj = new Date(date);
-            return dateObj >= oneWeekAgo && dateObj <= now;
-          })
-        );
-      }
-      case 'custom': {
-        // Benutzerdefinierter Zeitraum
-        if (!customStartDate || !customEndDate) return contextData;
-        
-        const startDate = new Date(customStartDate);
-        const endDate = new Date(customEndDate);
-        
-        return Object.fromEntries(
-          Object.entries(contextData).filter(([date]) => {
-            const dateObj = new Date(date);
-            return dateObj >= startDate && dateObj <= endDate;
-          })
-        );
-      }
-      default:
-        // Alle Daten
-        return contextData;
-    }
-  }, [contextData, dateFilter, customStartDate, customEndDate]);
-  
-  // Überprüfen, ob genügend Daten für Trends verfügbar sind
-  const hasSufficientData = useMemo(() => {
-    return filteredContextData && Object.keys(filteredContextData).length >= 2;
-  }, [filteredContextData]);
-  
-  // Berechne die aktuellsten 5 Tage aus den gefilterten Daten, sortiert nach Jahr und Datum
-  const latestDays = useMemo(() => {
-    if (!filteredContextData) return [];
-    
-    return Object.keys(filteredContextData)
-      .sort((a, b) => {
-        // VERBESSERT: Korrekte Sortierung nach Jahr
-        // Zuerst nach Jahren sortieren
-        const yearA = extractYearFromIsoDate(a);
-        const yearB = extractYearFromIsoDate(b);
-        
-        if (yearA !== yearB) {
-          return yearB - yearA; // Absteigend (neuere Jahre zuerst)
-        }
-        
-        // Dann nach Datum innerhalb des Jahres
-        return new Date(b) - new Date(a);
-      })
-      .slice(0, 5); // Nur die letzten 5 Tage betrachten
-  }, [filteredContextData]);
-  
-  // Berechnung der Trends für jeden Faktor
-  const trends = useMemo(() => {
-    if (!hasSufficientData || latestDays.length < 2) return {};
-    
-    const factors = ['stress', 'sleep', 'activity', 'salt', 'caffeine', 'alcohol'];
-    const result = {};
-    
-    factors.forEach(factor => {
-      // Hole die letzten beiden Tageswerte für den Faktor
-      const lastDay = latestDays[0];
-      const previousDay = latestDays[1];
-      
-      const currentValue = filteredContextData[lastDay]?.[factor];
-      const previousValue = filteredContextData[previousDay]?.[factor];
-      
-      // Wenn für beide Tage Werte vorhanden sind, berechne den Trend
-      if (currentValue !== undefined && previousValue !== undefined) {
-        if (currentValue > previousValue) {
-          result[factor] = 'up';
-        } else if (currentValue < previousValue) {
-          result[factor] = 'down';
-        } else {
-          result[factor] = 'stable';
-        }
-      } else {
-        result[factor] = null; // Kein Trend berechenbar
-      }
-    });
-    
-    return result;
-  }, [filteredContextData, hasSufficientData, latestDays]);
-  
+
   // Bestimme den aktuellsten Tag mit Daten
-  const latestDay = latestDays[0];
-  const latestContextData = latestDay ? filteredContextData[latestDay] : null;
+  const latestDay = Object.keys(contextData).sort().reverse()[0];
+  const latestContextData = latestDay ? contextData[latestDay] : null;
   
+  if (!latestContextData) return null;
+
+  // Daten für den Zeitraum-Filter
+  const dates = Object.keys(contextData).sort();
+  const firstDay = dates.length > 0 ? dates[0] : null;
+  const lastDay = dates.length > 0 ? dates[dates.length - 1] : null;
+  
+  // Formatiere Datum für Anzeige
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  };
+
   // Icon-Map für die Faktoren
   const factorIcons = {
-    'stress': <Heart size={22} />,
-    'sleep': <Moon size={22} />,
-    'activity': <Activity size={22} />,
-    'salt': <Utensils size={22} />,
-    'caffeine': <Coffee size={22} />,
-    'alcohol': <Wine size={22} />
+    'stress': <Heart size={20} />,
+    'sleep': <Moon size={20} />,
+    'activity': <Activity size={20} />,
+    'salt': <Utensils size={20} />,
+    'caffeine': <Coffee size={20} />,
+    'alcohol': <Wine size={20} />
   };
-  
+
   // Label-Map für die Faktoren
   const factorLabels = {
     'stress': 'Stress',
@@ -163,8 +45,8 @@ const ContextFactorsTrend = ({ contextData }) => {
     'caffeine': 'Koffein',
     'alcohol': 'Alkohol'
   };
-  
-  // Werte-Labels für jede Stufe (jetzt nur 0, 1, 2)
+
+  // Werte-Labels für jede Stufe
   const valueLabels = {
     'stress': ['Niedrig', 'Mittel', 'Hoch'],
     'sleep': ['Schlecht', 'Mittel', 'Gut'],
@@ -173,193 +55,171 @@ const ContextFactorsTrend = ({ contextData }) => {
     'caffeine': ['Niedrig', 'Mittel', 'Hoch'],
     'alcohol': ['Keiner', 'Wenig', 'Viel']
   };
-  
-  // Bewertung für Trends (nicht für alle Faktoren ist "runter" positiv)
-  const getValueClass = (factor, trend) => {
+
+  // Werte und Trends für die Faktoren
+  const factorValues = {};
+  const factorTrends = {};
+
+  // Trends berechnen
+  for (const factor of Object.keys(factorLabels)) {
+    if (latestContextData[factor] !== undefined) {
+      // Wert des aktuellsten Tages
+      factorValues[factor] = latestContextData[factor];
+      
+      // Trend berechnen (vereinfacht - nur letzter Tag vs. vorletzter Tag)
+      const sortedDates = Object.keys(contextData).sort();
+      if (sortedDates.length >= 2) {
+        const previousDay = sortedDates[sortedDates.length - 2];
+        const previousValue = contextData[previousDay][factor];
+        
+        if (previousValue !== undefined) {
+          if (factorValues[factor] > previousValue) {
+            factorTrends[factor] = 'up';
+          } else if (factorValues[factor] < previousValue) {
+            factorTrends[factor] = 'down';
+          } else {
+            factorTrends[factor] = 'stable';
+          }
+        } else {
+          factorTrends[factor] = null;
+        }
+      } else {
+        factorTrends[factor] = null;
+      }
+    }
+  }
+
+  // Trendsymbole rendern
+  const renderTrendIcon = (factor, value, trend) => {
+    if (trend === null) return <Minus size={16} className="text-gray-400" />;
+    
     // Für diese Faktoren ist "runter" besser
     const lowerIsBetter = ['stress', 'salt', 'caffeine', 'alcohol'];
     
-    if (trend === 'up') {
-      return lowerIsBetter.includes(factor) ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
-    } else if (trend === 'down') {
-      return lowerIsBetter.includes(factor) ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
-    }
-    return 'text-gray-700 font-medium';
-  };
-  
-  // Wenn überhaupt keine Daten vorhanden sind
-  if (!latestContextData) {
-    return null;
-  }
-  
-  // Faktoren filtern, für die Daten vorhanden sind
-  const availableFactors = Object.keys(latestContextData).filter(
-    factor => latestContextData[factor] !== undefined
-  );
-  
-  if (availableFactors.length === 0) {
-    return null;
-  }
-  
-  // Formatiere Datum für Anzeige
-  const formatDateForDisplay = (dateString) => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const currentYear = new Date().getFullYear();
-    
-    // Füge das Jahr nur hinzu, wenn es nicht das aktuelle Jahr ist
-    const options = { 
-      day: '2-digit', 
-      month: '2-digit',
-      year: year !== currentYear ? 'numeric' : undefined
-    };
-    
-    return date.toLocaleDateString('de-DE', options);
-  };
-  
-  // Berechne ersten und letzten Tag des angezeigten Zeitraums
-  const firstDay = latestDays.length > 0 ? latestDays[latestDays.length - 1] : null;
-  const lastDay = latestDays.length > 0 ? latestDays[0] : null;
-  
-  // Hilfsfunktion, um sicher den Wert für einen Faktor zu erhalten
-  const getFactorValueLabel = (factor, value) => {
-    // Prüfe, ob der Faktor und der Wert definiert sind
-    if (factor && value !== undefined && valueLabels[factor]) {
-      // Stelle sicher, dass der Index im gültigen Bereich liegt
-      if (value >= 0 && value < valueLabels[factor].length) {
-        return valueLabels[factor][value];
+    // Besondere Behandlung für Schlaf: "höher" ist besser, aber Wert "schlecht" ist 0
+    if (factor === 'sleep') {
+      if (trend === 'up') {
+        return <ArrowUp size={16} className="text-green-500" />;
+      } else if (trend === 'down') {
+        return <ArrowDown size={16} className="text-red-500" />;
       }
-      // Fallback: Den numerischen Wert anzeigen
-      return `Wert ${value}`;
+      return <Minus size={16} className="text-gray-500" />;
     }
-    // Fallback: Wenn nichts vorhanden ist
-    return '-';
+    
+    // Für die anderen Faktoren
+    if (lowerIsBetter.includes(factor)) {
+      if (trend === 'up') {
+        return <ArrowUp size={16} className="text-red-500" />;
+      } else if (trend === 'down') {
+        return <ArrowDown size={16} className="text-green-500" />;
+      }
+    } else { // Für Aktivität ist "höher" besser
+      if (trend === 'up') {
+        return <ArrowUp size={16} className="text-green-500" />;
+      } else if (trend === 'down') {
+        return <ArrowDown size={16} className="text-red-500" />;
+      }
+    }
+    
+    return <Minus size={16} className="text-gray-500" />;
   };
+
+  // Faktoren filtern, für die Daten vorhanden sind
+  const availableFactors = Object.keys(factorValues);
   
   return (
-    <div className="bg-gray-100 p-3 sm:p-4 rounded-lg shadow-md mb-6 border border-gray-300">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
-        <h2 className="text-lg font-semibold text-gray-800 mb-2 sm:mb-0">Kontextfaktoren-Trend</h2>
-        
-        <div className="relative">
+    <div className="bg-white p-3 rounded-lg shadow-sm mb-4">
+      {/* Header mit Toggle für Details */}
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center">
+          <h2 className="text-base font-semibold mr-2">Kontextfaktoren-Trend</h2>
           <button 
-            onClick={() => setShowFilterOptions(!showFilterOptions)}
-            className="flex items-center text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md w-full sm:w-auto justify-between sm:justify-start"
+            onClick={() => setShowDetails(!showDetails)}
+            className="text-blue-600 hover:text-blue-800 p-1 rounded-full"
           >
-            <Filter size={16} className="mr-1.5 text-blue-700" />
-            <span className="text-blue-700 font-medium">
-              {filterOptions.find(option => option.id === dateFilter)?.label || 'Zeitraum'}
-            </span>
+            {showDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
-          
-          {/* Dropdown für Zeitraumfilter */}
-          {showFilterOptions && (
-            <div className="absolute right-0 left-0 sm:left-auto mt-1 w-full sm:w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-              <div className="p-2">
-                {filterOptions.map(option => (
-                  <button
-                    key={option.id}
-                    onClick={() => {
-                      setDateFilter(option.id);
-                      setShowFilterOptions(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                      dateFilter === option.id ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-                
-                {/* Option für benutzerdefinierten Zeitraum */}
-                <button
-                  onClick={() => {
-                    setDateFilter('custom');
-                    // Nicht schließen - lässt Benutzer die Datumsfelder sehen
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                    dateFilter === 'custom' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  Benutzerdefinierter Zeitraum
-                </button>
-                
-                {/* Benutzerdefinierte Datumsfelder */}
-                {dateFilter === 'custom' && (
-                  <div className="p-2 border-t mt-2">
-                    <div className="flex flex-col space-y-2">
-                      <div>
-                        <label className="block text-xs text-gray-700 mb-1 font-medium">Von:</label>
-                        <input
-                          type="date"
-                          value={customStartDate}
-                          onChange={(e) => setCustomStartDate(e.target.value)}
-                          className="w-full p-1.5 text-sm border border-gray-300 rounded-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-700 mb-1 font-medium">Bis:</label>
-                        <input
-                          type="date"
-                          value={customEndDate}
-                          onChange={(e) => setCustomEndDate(e.target.value)}
-                          className="w-full p-1.5 text-sm border border-gray-300 rounded-md"
-                        />
-                      </div>
-                      <button
-                        onClick={() => setShowFilterOptions(false)}
-                        className="w-full bg-blue-600 text-white py-1.5 rounded-md text-sm font-medium"
-                      >
-                        Anwenden
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
+        
+        {/* Filter-Button */}
+        <button className="text-sm text-blue-600 flex items-center">
+          <Filter size={14} className="mr-1" />
+          <span className="text-xs mr-1">Zeitraum:</span>
+          <span className="font-medium text-xs">
+            {formatDateForDisplay(firstDay)} - {formatDateForDisplay(lastDay)}
+          </span>
+        </button>
       </div>
       
-      {/* Zeitraumanzeige - immer sichtbar */}
-      <div className="text-sm text-gray-700 mb-3 flex items-center border-b border-gray-300 pb-2">
-        <Calendar size={16} className="mr-2 text-blue-600" />
-        {firstDay && lastDay ? (
-          <span className="font-medium">Zeitraum: {formatDateForDisplay(firstDay)} - {formatDateForDisplay(lastDay)}</span>
-        ) : (
-          <span className="font-medium">Kein Zeitraum verfügbar</span>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {availableFactors.map((factor) => (
-          <div key={factor} className="bg-white p-2 rounded-lg flex flex-col items-center shadow-sm border border-gray-200">
-            <div className="text-indigo-600 mb-1">
-              {/* Responsive Icons: Kleiner auf Mobilgeräten */}
-              <span className="hidden sm:block">{factorIcons[factor]}</span>
-              <span className="sm:hidden">{React.cloneElement(factorIcons[factor], { size: 18 })}</span>
+      {/* Kompakte Version (standardmäßig angezeigt) */}
+      <div className="flex flex-wrap gap-2">
+        {availableFactors.map(factor => (
+          <div 
+            key={factor} 
+            className="flex-1 min-w-[100px] bg-gray-50 border border-gray-100 rounded-lg p-2 flex items-center"
+          >
+            <div className="text-indigo-500 mr-2">
+              {factorIcons[factor]}
             </div>
-            
-            <div className="text-sm font-medium text-gray-800 text-center">{factorLabels[factor]}</div>
-            
-            {/* Wert als Text anzeigen mit Fallback für undefined-Werte */}
-            <div className="text-base font-bold text-gray-900">
-              {getFactorValueLabel(factor, latestContextData[factor])}
-            </div>
-            
-            {/* Nur Trend-Pfeil anzeigen ohne Text */}
-            {trends[factor] ? (
-              <div className={`flex items-center mt-1 ${getValueClass(factor, trends[factor])}`}>
-                {trends[factor] === 'up' && <ArrowUp size={16} />}
-                {trends[factor] === 'down' && <ArrowDown size={16} />}
-                {trends[factor] === 'stable' && <Minus size={16} />}
+            <div className="flex-1">
+              <div className="text-xs text-gray-500">{factorLabels[factor]}</div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-sm">
+                  {valueLabels[factor] ? valueLabels[factor][factorValues[factor]] : ''}
+                </span>
+                {renderTrendIcon(factor, factorValues[factor], factorTrends[factor])}
               </div>
-            ) : (
-              <div className="h-4 mt-1"></div> // Platzhalter für Konsistenz
-            )}
+            </div>
           </div>
         ))}
       </div>
+      
+      {/* Erweiterte Details (ausklappbar) */}
+      {showDetails && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {availableFactors.map(factor => (
+              <div key={factor} className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center">
+                    <span className="text-indigo-500 mr-2">{factorIcons[factor]}</span>
+                    <span className="font-medium text-sm">{factorLabels[factor]}</span>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  {/* Wert Verlauf als Mini-Balken */}
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full mr-2 relative">
+                    <div 
+                      className="absolute top-0 left-0 h-2 rounded-full" 
+                      style={{ 
+                        width: `${(factorValues[factor] / 2) * 100}%`,
+                        backgroundColor: factor === 'sleep' 
+                          ? (factorValues[factor] === 2 ? '#10B981' : factorValues[factor] === 1 ? '#FBBF24' : '#EF4444')
+                          : (factorValues[factor] === 0 ? '#10B981' : factorValues[factor] === 1 ? '#FBBF24' : '#EF4444')
+                      }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <span className="font-medium">
+                      {valueLabels[factor] ? valueLabels[factor][factorValues[factor]] : ''}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Verlauf über Zeit hier anzeigen könnte */}
+                <div className="text-xs mt-1 text-gray-500 flex items-center">
+                  <span>Trend: </span>
+                  <span className="ml-1 flex items-center">
+                    {renderTrendIcon(factor, factorValues[factor], factorTrends[factor])}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
