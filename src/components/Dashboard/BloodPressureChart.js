@@ -3,14 +3,15 @@ import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
          ResponsiveContainer, ReferenceLine } from 'recharts';
 import { getBloodPressureCategory } from '../../utils/bloodPressureUtils';
-import { Filter, Calendar, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, Calendar, Eye, EyeOff, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
 
 const BloodPressureChart = ({ data, viewType, avgValues }) => {
-  // State für mobile Optimierungen
+  // State for mobile optimizations
   const [isMobile, setIsMobile] = useState(false);
   const [expandLegend, setExpandLegend] = useState(false);
+  const [chartHeight, setChartHeight] = useState(300);
   
-  // Welche Linien sollen angezeigt werden
+  // Which lines should be shown
   const [visibleLines, setVisibleLines] = useState({
     systolic: true,
     diastolic: true,
@@ -18,52 +19,55 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     references: true
   });
   
-  // Zeitraumfilter für das Diagramm
+  // Time filter for the chart
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'month', 'week', 'custom'
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [showFilterOptions, setShowFilterOptions] = useState(false);
   
-  // Prüfen, ob wir auf einem mobilen Gerät sind (beim Mounten und bei Größenänderungen)
+  // Check if we're on a mobile device (on mount and on resize)
   useEffect(() => {
     const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const isMobileView = window.innerWidth < 768;
+      setIsMobile(isMobileView);
+      // Adjust chart height based on screen size
+      setChartHeight(isMobileView ? 220 : 300);
     };
     
     // Initial Check
     checkIfMobile();
     
-    // Event Listener für Größenänderungen
+    // Event Listener for resizes
     window.addEventListener('resize', checkIfMobile);
     
     // Cleanup
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
   
-  // Prefix für aktuelle Ansicht (morgen oder abend)
+  // Prefix for current view (morning or evening)
   const prefix = viewType === 'morgen' ? 'morgen' : 'abend';
   
-  // Extrahiert das Jahr aus einem Datumsstring
+  // Extract year from date string
   const extractYearFromDate = (dateStr) => {
-    if (!dateStr) return null; // Kein Default-Jahr zurückgeben
+    if (!dateStr) return new Date().getFullYear(); // Current year as fallback
     
-    // Suche nach einer vierstelligen Zahl, die das Jahr sein könnte
+    // Look for a four-digit number that could be the year
     const yearMatch = dateStr.match(/\b(20\d{2})\b/); // 2000-2099
     if (yearMatch) {
       return parseInt(yearMatch[1]);
     }
     
-    return null; // Kein Jahr gefunden
+    // No year found, use current year
+    return new Date().getFullYear();
   };
   
-  // Parst ein deutsches Datum in ein JavaScript Date-Objekt
+  // Parse a German date into a JavaScript Date object
   const parseGermanDate = (dateStr) => {
     if (!dateStr) return null;
     
-    // Jahr extrahieren, falls vorhanden
+    // Extract year (if present)
     const explicitYear = extractYearFromDate(dateStr);
     
-    // Deutsche Monatsnamen in Zahlen (0-11) für JS Date
     const months = {
       'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
       'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
@@ -72,23 +76,23 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     
     let day, month, year;
     
-    // Format "Januar 15" oder "Januar 15 2024"
+    // Format "Januar 15" or "Januar 15 2024"
     if (dateStr.includes(' ') && !dateStr.includes('.')) {
       const parts = dateStr.split(' ');
       if (parts.length >= 2 && months[parts[0]] !== undefined) {
         month = parts[0];
         day = parseInt(parts[1]);
-        year = explicitYear || new Date().getFullYear(); // Aktuelles Jahr als Fallback
+        year = explicitYear || new Date().getFullYear(); // Current year as fallback
       }
     }
-    // Format "15. Januar" oder "15. Januar 2024"
+    // Format "15. Januar" or "15. Januar 2024"
     else if (dateStr.includes('.') && dateStr.includes(' ')) {
       const parts = dateStr.split('. ');
       if (parts.length >= 2) {
         day = parseInt(parts[0]);
-        const monthPart = parts[1].split(' ')[0]; // Falls Jahr enthalten ist
+        const monthPart = parts[1].split(' ')[0]; // If year is included
         month = monthPart;
-        year = explicitYear || new Date().getFullYear(); // Aktuelles Jahr als Fallback
+        year = explicitYear || new Date().getFullYear(); // Current year as fallback
       }
     }
     
@@ -99,7 +103,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     return null;
   };
   
-  // Sortiert alle Daten chronologisch nach Datum
+  // Sort all data chronologically by date
   const sortDataByDate = (dataArray) => {
     return [...dataArray].sort((a, b) => {
       const dateA = parseGermanDate(a.datum);
@@ -109,24 +113,24 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         return dateA - dateB;
       }
       
-      // Fallback, wenn Datumobjekte nicht erstellt werden können
+      // Fallback if date objects cannot be created
       return 0;
     });
   };
-  
-  // Filtere Daten basierend auf dem ausgewählten Zeitraum
+
+  // Filter data based on selected time range
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
     
-    // Sortiere Daten zuerst chronologisch
+    // First sort data chronologically
     const sortedData = sortDataByDate(data);
     
     const now = new Date();
     
-    // Filtere basierend auf dem ausgewählten Zeitraum
+    // Filter based on selected time range
     switch (dateFilter) {
       case 'month': {
-        // Letzter Monat
+        // Last month
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         
@@ -136,7 +140,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         });
       }
       case 'week': {
-        // Letzte Woche
+        // Last week
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         
@@ -146,7 +150,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         });
       }
       case 'custom': {
-        // Benutzerdefinierter Zeitraum
+        // Custom time range
         if (!customStartDate || !customEndDate) return sortedData;
         
         const startDate = new Date(customStartDate);
@@ -158,54 +162,46 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         });
       }
       default:
-        // Alle Daten (bereits sortiert)
+        // All data (already sorted)
         return sortedData;
     }
   }, [data, dateFilter, customStartDate, customEndDate]);
-  
-  // Optimierte Daten für Mobile-Ansicht (Reduzierung der Datenpunkte)
+
+  // Optimized data for mobile view (reducing data points)
   const mobileOptimizedData = useMemo(() => {
-    if (!isMobile || filteredData.length <= 7) return filteredData;
+    if (!isMobile || filteredData.length <= 5) return filteredData;
     
-    // Bei vielen Datenpunkten auf Mobilgeräten: Intelligente Reduzierung
-    // Strategie: Bei mehr als 7 Datenpunkten zeigen wir eine Auswahl an wichtigen Punkten
+    // For mobile devices with many data points: Intelligent reduction
+    // Strategy: With more than 5 data points, we show a selection of important points
     
-    // Option 1: Erste, letzte und gleichmäßig verteilte Zwischenpunkte anzeigen
-    if (filteredData.length <= 14) {
-      // Bei bis zu 14 Datenpunkten: Jeden zweiten anzeigen
-      return filteredData.filter((_, index) => index % 2 === 0);
-    } else if (filteredData.length <= 30) {
-      // Bei bis zu 30 Datenpunkten: Ungefähr 10 wichtige Punkte anzeigen
-      const step = Math.floor(filteredData.length / 10);
-      return filteredData.filter((_, index) => index % step === 0 || index === filteredData.length - 1);
-    } else {
-      // Bei sehr vielen Datenpunkten: Maximal 15 Punkte anzeigen
-      const step = Math.floor(filteredData.length / 15);
-      return filteredData.filter((_, index) => index % step === 0 || index === filteredData.length - 1);
-    }
+    // First and last points plus evenly distributed intermediate points
+    const maxPoints = Math.min(7, Math.max(5, Math.floor(window.innerWidth / 60)));
+    const step = Math.max(1, Math.floor(filteredData.length / maxPoints));
+    
+    return filteredData.filter((_, index) => index % step === 0 || index === filteredData.length - 1);
   }, [filteredData, isMobile]);
   
-  // Die tatsächlich anzuzeigenden Daten (normal oder optimiert)
+  // The actual data to display (normal or optimized)
   const displayData = isMobile ? mobileOptimizedData : filteredData;
   
-  // Verfügbare Zeiträume für das Dropdown
+  // Available time ranges for the dropdown
   const filterOptions = [
     { id: 'all', label: 'Alle Daten' },
     { id: 'month', label: 'Letzter Monat' },
     { id: 'week', label: 'Letzte Woche' }
   ];
   
-  // Berechne den ersten und letzten Tag des angezeigten Zeitraums für Anzeige
+  // Calculate first and last day of the displayed time range for display
   const getDateRange = () => {
     if (filteredData.length === 0) {
       return "Keine Daten";
     }
     
-    // Formatiere für Anzeige
+    // Format for display
     const formatDate = (dateStr) => {
       if (!dateStr) return "";
       
-      // Direktes Zurückgeben des Datums ohne weitere Verarbeitung
+      // Return the date directly without further processing
       return dateStr;
     };
     
@@ -215,7 +211,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     return `${firstDate} - ${lastDate}`;
   };
   
-  // Toggle für Sichtbarkeit der Linien
+  // Toggle for line visibility
   const toggleLine = (line) => {
     setVisibleLines(prev => ({
       ...prev,
@@ -223,43 +219,43 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     }));
   };
   
-  // Custom Dot für die Linien, um 0-Werte nicht anzuzeigen
+  // Custom Dot for the lines to hide 0 values
   const CustomizedDot = (props) => {
     const { cx, cy, value } = props;
     
-    // Wenn der Wert 0 ist oder nicht existiert, keinen Punkt zeichnen
+    // If value is 0 or doesn't exist, don't draw a point
     if (value === 0 || value === undefined || value === null) {
       return null;
     }
     
-    // Größe des Punktes basierend auf Mobilgerät anpassen
-    const dotSize = isMobile ? 4 : 5;
+    // Adjust dot size based on mobile device
+    const dotSize = isMobile ? 3 : 4;
     
-    // Sonst den Standardpunkt zurückgeben
+    // Otherwise return the standard dot
     return (
-      <circle cx={cx} cy={cy} r={dotSize} fill={props.stroke} stroke={props.stroke} strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={dotSize} fill={props.stroke} stroke={props.stroke} strokeWidth={1.5} />
     );
   };
   
-  // Custom Dot für aktivierte Datenpunkte
+  // Custom Dot for active data points
   const CustomizedActiveDot = (props) => {
     const { cx, cy, value } = props;
     
-    // Wenn der Wert 0 ist, keinen Punkt zeichnen
+    // If value is 0, don't draw a dot
     if (value === 0 || value === undefined || value === null) {
       return null;
     }
     
-    // Größe des aktiven Punktes basierend auf Mobilgerät anpassen
-    const dotSize = isMobile ? 6 : 7;
+    // Adjust active dot size based on mobile device
+    const dotSize = isMobile ? 5 : 6;
     
-    // Sonst den aktiven Punkt zurückgeben
+    // Otherwise return the active dot
     return (
-      <circle cx={cx} cy={cy} r={dotSize} fill={props.stroke} stroke={props.stroke} strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={dotSize} fill={props.stroke} stroke="white" strokeWidth={2} />
     );
   };
   
-  // Benutzerdefinierter Tooltip für das Diagramm
+  // Custom Tooltip for the chart
   const CustomTooltip = useCallback(({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -267,17 +263,17 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
       const dia = data[`${prefix}Dia`];
       const puls = data[`${prefix}Puls`];
       
-      // Wenn ein Wert 0 ist, soll er nicht angezeigt werden
+      // If a value is 0, don't show the tooltip
       if ((sys === 0 && dia === 0) || (sys === 0 || dia === 0)) {
-        return null; // Kein Tooltip anzeigen
+        return null; // Don't show the tooltip
       }
       
       const category = getBloodPressureCategory(sys, dia);
       
       return (
         <div className="custom-tooltip bg-white p-2 sm:p-3 border border-gray-200 shadow-lg rounded-md max-w-[180px] sm:max-w-none">
-          <p className="font-medium text-sm">{label}, {data.datum}</p>
-          <div className="grid grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-1 mt-1 text-xs sm:text-sm">
+          <p className="font-medium text-xs sm:text-sm">{label}, {data.datum}</p>
+          <div className="grid grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-1 mt-1 text-xs">
             {sys > 0 && (
               <>
                 <span className="text-gray-600">Systolisch:</span>
@@ -313,12 +309,12 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     return null;
   }, [prefix]);
   
-  // Angepasste mobile Legende
+  // Adjusted mobile legend
   const renderMobileLegend = () => {
     return (
       <div className="mb-2 mt-1">
         <div 
-          className="flex items-center justify-between bg-gray-100 p-2 rounded-md cursor-pointer"
+          className="flex items-center justify-between bg-gray-100 p-2 rounded-md"
           onClick={() => setExpandLegend(!expandLegend)}
         >
           <span className="font-medium text-sm">Linien anzeigen/ausblenden</span>
@@ -326,40 +322,40 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         </div>
         
         {expandLegend && (
-          <div className="mt-2 grid grid-cols-2 gap-2 px-2">
+          <div className="mt-2 grid grid-cols-2 gap-2 px-1">
             <div 
-              className={`flex items-center p-2 rounded-md cursor-pointer ${visibleLines.systolic ? 'bg-red-50' : 'bg-gray-100'}`}
+              className={`flex items-center p-2 rounded-md ${visibleLines.systolic ? 'bg-red-50' : 'bg-gray-100'}`}
               onClick={() => toggleLine('systolic')}
             >
-              <div className="w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: '#FF4136' }}></div>
+              <div className="w-3 h-3 mr-2 rounded-full" style={{ backgroundColor: '#FF4136' }}></div>
               <span className="text-xs">Systolisch</span>
               {visibleLines.systolic ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
             </div>
             
             <div 
-              className={`flex items-center p-2 rounded-md cursor-pointer ${visibleLines.diastolic ? 'bg-blue-50' : 'bg-gray-100'}`}
+              className={`flex items-center p-2 rounded-md ${visibleLines.diastolic ? 'bg-blue-50' : 'bg-gray-100'}`}
               onClick={() => toggleLine('diastolic')}
             >
-              <div className="w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: '#0074D9' }}></div>
+              <div className="w-3 h-3 mr-2 rounded-full" style={{ backgroundColor: '#0074D9' }}></div>
               <span className="text-xs">Diastolisch</span>
               {visibleLines.diastolic ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
             </div>
             
             <div 
-              className={`flex items-center p-2 rounded-md cursor-pointer ${visibleLines.pulse ? 'bg-green-50' : 'bg-gray-100'}`}
+              className={`flex items-center p-2 rounded-md ${visibleLines.pulse ? 'bg-green-50' : 'bg-gray-100'}`}
               onClick={() => toggleLine('pulse')}
             >
-              <div className="w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: '#2ECC40' }}></div>
+              <div className="w-3 h-3 mr-2 rounded-full" style={{ backgroundColor: '#2ECC40' }}></div>
               <span className="text-xs">Puls</span>
               {visibleLines.pulse ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
             </div>
             
             <div 
-              className={`flex items-center p-2 rounded-md cursor-pointer ${visibleLines.references ? 'bg-purple-50' : 'bg-gray-100'}`}
+              className={`flex items-center p-2 rounded-md ${visibleLines.references ? 'bg-purple-50' : 'bg-gray-100'}`}
               onClick={() => toggleLine('references')}
             >
-              <div className="flex-1 h-1 mr-2 bg-purple-300" style={{ backgroundImage: 'linear-gradient(to right, transparent 50%, white 50%)', backgroundSize: '10px 100%' }}></div>
-              <span className="text-xs">Referenzlinien</span>
+              <div className="flex-1 h-1 mr-2 bg-purple-300" style={{ backgroundImage: 'linear-gradient(to right, transparent 50%, white 50%)', backgroundSize: '6px 100%' }}></div>
+              <span className="text-xs">Referenz</span>
               {visibleLines.references ? <Eye size={14} className="ml-auto" /> : <EyeOff size={14} className="ml-auto" />}
             </div>
           </div>
@@ -368,7 +364,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
     );
   };
   
-  // Rendere Warnhinweis bei vielen Datenpunkten auf Mobilgeräten
+  // Render warning for many data points on mobile
   const renderMobileDataWarning = () => {
     if (!isMobile || filteredData.length <= mobileOptimizedData.length) return null;
     
@@ -377,6 +373,12 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         <strong>Hinweis:</strong> Es werden {mobileOptimizedData.length} von {filteredData.length} Datenpunkten angezeigt. Verwende die Filter für eine detailliertere Ansicht.
       </div>
     );
+  };
+  
+  // Function to share the chart as an image
+  const handleShareChart = () => {
+    // This is a placeholder - implementing chart sharing would involve canvas rendering
+    alert('Diese Funktion wird in einer zukünftigen Version verfügbar sein.');
   };
   
   return (
@@ -391,7 +393,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
             {filteredData.length} Messungen
           </div>
           
-          {/* Zeitraum-Filter Dropdown */}
+          {/* Time range filter dropdown */}
           <div className="relative flex-1 sm:flex-none">
             <button 
               onClick={() => setShowFilterOptions(!showFilterOptions)}
@@ -421,11 +423,11 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                     </button>
                   ))}
                   
-                  {/* Option für benutzerdefinierten Zeitraum */}
+                  {/* Option for custom time range */}
                   <button
                     onClick={() => {
                       setDateFilter('custom');
-                      // Nicht schließen - lässt Benutzer die Datumsfelder sehen
+                      // Don't close - let user see the date fields
                     }}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm ${
                       dateFilter === 'custom' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'
@@ -434,7 +436,7 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                     Benutzerdefinierter Zeitraum
                   </button>
                   
-                  {/* Benutzerdefinierte Datumsfelder */}
+                  {/* Custom date fields */}
                   {dateFilter === 'custom' && (
                     <div className="p-2 border-t mt-2">
                       <div className="flex flex-col space-y-2">
@@ -469,16 +471,27 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
               </div>
             )}
           </div>
+          
+          {/* Share button - Mobile only */}
+          {isMobile && (
+            <button
+              onClick={handleShareChart}
+              className="p-1.5 bg-gray-100 rounded-md"
+              aria-label="Diagramm teilen"
+            >
+              <Share2 size={16} className="text-gray-600" />
+            </button>
+          )}
         </div>
       </div>
       
-      {/* Zeitraumanzeige - immer sichtbar */}
+      {/* Time range display - always visible */}
       <div className="text-sm text-gray-700 mb-3 flex items-center border-b border-gray-300 pb-2">
         <Calendar size={16} className="mr-2 text-blue-600" />
-        <span className="font-medium">Zeitraum: {getDateRange()}</span>
+        <span className="font-medium truncate">Zeitraum: {getDateRange()}</span>
       </div>
       
-      {/* Mobile-Optimierungen */}
+      {/* Mobile optimizations */}
       {isMobile && (
         <>
           {renderMobileLegend()}
@@ -486,17 +499,17 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
         </>
       )}
       
-      <div className="h-64 sm:h-80">
+      <div className="h-60 sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart 
             data={displayData} 
             margin={{ 
-              top: 20, 
-              right: isMobile ? 10 : 120, 
+              top: 10, 
+              right: isMobile ? 5 : 30, 
               left: isMobile ? 0 : 10, 
-              bottom: 10 
+              bottom: 5 
             }}
-            connectNulls={false} // Wichtig: 0-Werte nicht verbinden
+            connectNulls={false} // Important: don't connect 0 values
           >
             <CartesianGrid strokeDasharray="3 3" opacity={0.7} />
             <XAxis 
@@ -509,12 +522,12 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
               domain={[40, 180]} 
               tick={{ fill: '#333', fontSize: isMobile ? 10 : 12 }}
               tickLine={{ stroke: '#555' }}
-              tickCount={7}
-              width={isMobile ? 25 : 30}
+              tickCount={isMobile ? 5 : 7}
+              width={isMobile ? 22 : 30}
             />
             <Tooltip content={<CustomTooltip />} />
             
-            {/* Legend nur auf Desktop anzeigen, auf Mobile durch eigene Komponente ersetzt */}
+            {/* Legend only on desktop, replaced by custom component on mobile */}
             {!isMobile && (
               <Legend
                 iconType="circle"
@@ -525,13 +538,14 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
               />
             )}
                 
-            {/* Referenzlinien für Blutdruckbereiche */}
+            {/* Reference lines for blood pressure ranges */}
             {visibleLines.references && (
               <>
                 <ReferenceLine 
                   y={120} 
                   stroke="#2ECC40" 
                   strokeDasharray="3 3" 
+                  strokeWidth={isMobile ? 0.5 : 1}
                   label={isMobile ? null : {
                     value: "Normal", 
                     position: "right", 
@@ -543,7 +557,8 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                 <ReferenceLine 
                   y={140} 
                   stroke="#FF851B" 
-                  strokeDasharray="3 3" 
+                  strokeDasharray="3 3"
+                  strokeWidth={isMobile ? 0.5 : 1} 
                   label={isMobile ? null : {
                     value: "Hyp. Grad 1", 
                     position: "right", 
@@ -552,32 +567,34 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                     offset: 5
                   }} 
                 />
-                <ReferenceLine 
-                  y={160} 
-                  stroke="#FF4136" 
-                  strokeDasharray="3 3" 
-                  label={isMobile ? null : {
-                    value: "Hyp. Grad 2", 
-                    position: "right", 
-                    fill: "#FF4136",
-                    fontSize: 12,
-                    offset: 5
-                  }} 
-                />
+                {!isMobile && (
+                  <ReferenceLine 
+                    y={160} 
+                    stroke="#FF4136" 
+                    strokeDasharray="3 3" 
+                    label={{
+                      value: "Hyp. Grad 2", 
+                      position: "right", 
+                      fill: "#FF4136",
+                      fontSize: 12,
+                      offset: 5
+                    }} 
+                  />
+                )}
               </>
             )}
                 
-            {/* Hauptlinien mit angepassten Dots, um 0-Werte zu ignorieren */}
+            {/* Main lines with custom dots to ignore 0 values */}
             {visibleLines.systolic && (
               <Line 
                 type="monotone" 
                 dataKey={`${prefix}Sys`} 
                 stroke="#FF4136" 
                 name="Systolisch" 
-                strokeWidth={2.5}
+                strokeWidth={isMobile ? 2 : 2.5}
                 dot={<CustomizedDot />}
                 activeDot={<CustomizedActiveDot />}
-                connectNulls={false} // 0-Werte nicht verbinden
+                connectNulls={false} // Don't connect 0 values
               />
             )}
             
@@ -587,10 +604,10 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                 dataKey={`${prefix}Dia`} 
                 stroke="#0074D9" 
                 name="Diastolisch" 
-                strokeWidth={2.5}
+                strokeWidth={isMobile ? 2 : 2.5}
                 dot={<CustomizedDot />}
                 activeDot={<CustomizedActiveDot />}
-                connectNulls={false} // 0-Werte nicht verbinden
+                connectNulls={false} // Don't connect 0 values
               />
             )}
             
@@ -600,20 +617,21 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                 dataKey={`${prefix}Puls`} 
                 stroke="#2ECC40" 
                 name="Puls" 
-                strokeWidth={2}
+                strokeWidth={isMobile ? 1.5 : 2}
                 dot={<CustomizedDot />}
                 activeDot={<CustomizedActiveDot />}
-                connectNulls={false} // 0-Werte nicht verbinden
+                connectNulls={false} // Don't connect 0 values
               />
             )}
                 
-            {/* Durchschnittslinien */}
+            {/* Average lines */}
             {visibleLines.references && (
               <>
                 <ReferenceLine 
                   y={avgValues.sys} 
                   stroke="#B10DC9" 
-                  strokeWidth={1.5}
+                  strokeWidth={1}
+                  strokeDasharray={isMobile ? "2 2" : "3 3"}
                   label={isMobile ? null : {
                     value: "Ø Sys", 
                     position: "left", 
@@ -625,7 +643,8 @@ const BloodPressureChart = ({ data, viewType, avgValues }) => {
                 <ReferenceLine 
                   y={avgValues.dia} 
                   stroke="#7FDBFF" 
-                  strokeWidth={1.5}
+                  strokeWidth={1}
+                  strokeDasharray={isMobile ? "2 2" : "3 3"}
                   label={isMobile ? null : {
                     value: "Ø Dia", 
                     position: "left", 

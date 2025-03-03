@@ -1,6 +1,6 @@
 // App.js
-import React, { useState } from 'react';
-import { Plus, Upload, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Upload, FileText, Home, PieChart, List, Settings } from 'lucide-react';
 
 // Custom Hook
 import useBloodPressureData from './hooks/useBloodPressureData';
@@ -28,7 +28,7 @@ import ImportModal from './components/Forms/ImportModal';
 import MedicalReportGenerator from './components/Reports/MedicalReportGenerator';
 
 const BlutdruckTracker = () => {
-  // Daten-Hook
+  // Data Hook
   const {
     data,
     dataWithMA,
@@ -44,24 +44,32 @@ const BlutdruckTracker = () => {
     deleteEntry,
     importData,
     
-    // Kontextfaktoren
+    // Context Factors
     contextFactors,
     getContextForDisplayDate,
     getLatestContextFactors,
     factorCorrelations,
     
-    // Berichtsfunktionen
+    // Report Functions
     showReport,
     toggleReport
   } = useBloodPressureData();
 
-  // UI-State
+  // UI State
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [currentEntry, setCurrentEntry] = useState(null);
+  const [activeTab, setActiveTab] = useState('home');
+  
+  // Swipe state for view switching
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  
+  // Label for swipe instruction
+  const [showSwipeLabel, setShowSwipeLabel] = useState(true);
 
-  // Event-Handler
+  // Event Handlers
   const handleAddNew = () => {
     setShowAddForm(true);
     setShowEditForm(false);
@@ -90,13 +98,21 @@ const BlutdruckTracker = () => {
     return result;
   };
 
-  // Berechnet, ob genügend Kontext-Daten für die Trend-Anzeige vorhanden sind
+  const handleOpenImport = () => {
+    setShowImportModal(true);
+  };
+  
+  const handleToggleReport = () => {
+    toggleReport();
+  };
+
+  // Check if we have enough context data for trend display
   const hasContextData = Object.keys(contextFactors).length > 0;
   
-  // Offline-Status (wird vom Service Worker aktualisiert)
+  // Offline Status (updated by Service Worker)
   const [isOffline, setIsOffline] = useState(false);
   
-  // Listener für Offline-Status
+  // Listener for Offline Status
   React.useEffect(() => {
     const handleOffline = () => setIsOffline(true);
     const handleOnline = () => setIsOffline(false);
@@ -105,7 +121,7 @@ const BlutdruckTracker = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Initialen Status prüfen
+    // Check initial status
     setIsOffline(!navigator.onLine);
     
     return () => {
@@ -115,32 +131,149 @@ const BlutdruckTracker = () => {
     };
   }, []);
 
+  // Hide swipe label after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSwipeLabel(false);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Touch event handlers for horizontal swiping
+  const handleTouchStart = (e) => {
+    setTouchStart({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY
+    });
+    setTouchEnd(null);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY
+    });
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distanceX = touchEnd.x - touchStart.x;
+    const distanceY = Math.abs(touchEnd.y - touchStart.y);
+    const isHorizontalSwipe = distanceY < 100;
+    
+    // Horizontal swipe detection (only if we're on the home tab)
+    if (isHorizontalSwipe && activeTab === 'home') {
+      if (distanceX < -50) { // Left swipe
+        // Switch to evening if currently on morning
+        if (viewType === 'morgen') {
+          setViewType('abend');
+        }
+      } else if (distanceX > 50) { // Right swipe
+        // Switch to morning if currently on evening
+        if (viewType === 'abend') {
+          setViewType('morgen');
+        }
+      }
+    }
+    
+    // Reset touch states
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+  // Render content based on active tab
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'stats':
+        return (
+          <>
+            <AdvancedStatistics 
+              data={data} 
+              contextFactors={contextFactors} 
+            />
+          </>
+        );
+      case 'table':
+        return (
+          <BloodPressureTable 
+            data={data} 
+            onEdit={handleEdit} 
+            onDelete={deleteEntry} 
+          />
+        );
+      case 'settings':
+        return (
+          <>
+            <div className="mb-4 mt-2">
+              <button 
+                onClick={handleOpenImport}
+                className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg flex items-center justify-center mb-3"
+              >
+                <Upload size={18} className="mr-2" />
+                <span>Import/Export</span>
+              </button>
+              <button 
+                onClick={handleToggleReport}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg flex items-center justify-center"
+              >
+                <FileText size={18} className="mr-2" />
+                Ärztlichen Bericht erstellen
+              </button>
+            </div>
+            <BloodPressureCategoryLegend />
+          </>
+        );
+      default: // 'home'
+        return (
+          <>
+            {/* Main content area with touch events for swiping */}
+            <div 
+              className="relative" 
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Swipe instruction - shown only initially */}
+              {showSwipeLabel && (
+                <div className="absolute top-0 left-0 right-0 bg-blue-50 text-blue-700 text-xs p-2 text-center rounded-md mb-2 z-10">
+                  ← Links/Rechts wischen zum Wechseln zwischen Morgen- und Abendwerten →
+                </div>
+              )}
+              
+              {/* Toggle buttons for morning/evening */}
+              <ToggleViewButtons viewType={viewType} setViewType={setViewType} />
+              
+              {/* Blood pressure summary */}
+              <BloodPressureSummary 
+                avgValues={avgValues} 
+                bpCategory={bpCategory} 
+                minMaxValues={minMaxValues}
+              />
+              
+              {/* Context factors trend if available */}
+              {hasContextData && (
+                <ContextFactorsTrend contextData={contextFactors} />
+              )}
+              
+              {/* Blood pressure chart */}
+              <BloodPressureChart 
+                data={dataWithMA} 
+                viewType={viewType} 
+                avgValues={avgValues}
+              />
+            </div>
+          </>
+        );
+    }
+  };
+
   return (
-    <div className="mx-auto p-2 sm:p-4 bg-gray-50 rounded-lg">
-      {/* Header - optimiert für Mobile */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
-        <h1 className="text-xl font-bold mb-3 sm:mb-0">Blutdruck-Tracker</h1>
-        <div className="flex flex-wrap gap-2">
-          <button 
-            onClick={handleAddNew}
-            className="flex-1 sm:flex-auto bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center justify-center sm:justify-start"
-          >
-            <Plus size={18} className="mr-1" />
-            <span>Neuer Eintrag</span>
-          </button>
-          <button 
-            onClick={() => setShowImportModal(true)}
-            className="flex-1 sm:flex-auto bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center sm:justify-start"
-          >
-            <Upload size={18} className="mr-1" />
-            <span>Import/Export</span>
-          </button>
-        </div>
-      </div>
-      
-      {/* Offline-Banner */}
+    <div className="mx-auto px-1 py-2 sm:p-3 md:p-4 bg-gray-50 min-h-screen max-w-screen-xl relative">
+      {/* Offline Banner */}
       {isOffline && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-3 rounded-md">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -156,59 +289,57 @@ const BlutdruckTracker = () => {
         </div>
       )}
       
-      {/* Status-Nachricht */}
+      {/* Status Message */}
       <StatusMessage message={statusMessage} />
       
-      {/* Ansicht wechseln */}
-      <ToggleViewButtons viewType={viewType} setViewType={setViewType} />
+      {/* Main Content Area */}
+      <div className="mt-1 mb-20">
+        {renderTabContent()}
+      </div>
       
-      {/* Zusammenfassung */}
-      <BloodPressureSummary 
-        avgValues={avgValues} 
-        bpCategory={bpCategory} 
-        minMaxValues={minMaxValues}
-      />
-      
-      {/* Kontext-Faktoren-Trends, falls Daten vorhanden */}
-      {hasContextData && (
-        <ContextFactorsTrend contextData={contextFactors} />
-      )}
-      
-      {/* Diagramm */}
-      <BloodPressureChart 
-        data={dataWithMA} 
-        viewType={viewType} 
-        avgValues={avgValues}
-      />
-      
-      {/* NEU: Erweiterte Statistiken */}
-      <AdvancedStatistics 
-        data={data} 
-        contextFactors={contextFactors} 
-      />
-      
-      {/* Tabelle */}
-      <BloodPressureTable 
-        data={data} 
-        onEdit={handleEdit} 
-        onDelete={deleteEntry} 
-      />
-      
-      {/* Berichterstellung Button - Responsive */}
-      <div className="mb-4 flex justify-center sm:justify-end">
-        <button 
-          onClick={toggleReport}
-          className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center"
+      {/* Mobile bottom navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 flex justify-around z-10">
+        <button
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center p-1 ${activeTab === 'home' ? 'text-blue-600' : 'text-gray-600'}`}
         >
-          <FileText size={18} className="mr-1" />
-          Ärztlichen Bericht erstellen
+          <Home size={activeTab === 'home' ? 22 : 20} />
+          <span className="text-xs mt-1">Home</span>
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('stats')}
+          className={`flex flex-col items-center p-1 ${activeTab === 'stats' ? 'text-blue-600' : 'text-gray-600'}`}
+        >
+          <PieChart size={activeTab === 'stats' ? 22 : 20} />
+          <span className="text-xs mt-1">Statistik</span>
+        </button>
+        
+        <button
+          onClick={handleAddNew}
+          className="flex flex-col items-center p-1 bg-blue-500 text-white -mt-4 rounded-full w-14 h-14 flex items-center justify-center shadow-lg border-4 border-white"
+        >
+          <Plus size={28} />
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('table')}
+          className={`flex flex-col items-center p-1 ${activeTab === 'table' ? 'text-blue-600' : 'text-gray-600'}`}
+        >
+          <List size={activeTab === 'table' ? 22 : 20} />
+          <span className="text-xs mt-1">Einträge</span>
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`flex flex-col items-center p-1 ${activeTab === 'settings' ? 'text-blue-600' : 'text-gray-600'}`}
+        >
+          <Settings size={activeTab === 'settings' ? 22 : 20} />
+          <span className="text-xs mt-1">Mehr</span>
         </button>
       </div>
       
-      {/* Blutdruck-Kategorien */}
-      <BloodPressureCategoryLegend />
-      
-      {/* Formulare mit integrierter Kontexterfassung */}
+      {/* Forms with context capture */}
       {showAddForm && (
         <EntryFormWithContext 
           previousContext={getLatestContextFactors()}
@@ -227,7 +358,7 @@ const BlutdruckTracker = () => {
         />
       )}
       
-      {/* Import/Export-Modal */}
+      {/* Import/Export Modal */}
       {showImportModal && (
         <ImportModal 
           onImport={importData} 
@@ -237,7 +368,7 @@ const BlutdruckTracker = () => {
         />
       )}
       
-      {/* Ärztlicher Bericht */}
+      {/* Medical Report */}
       {showReport && (
         <MedicalReportGenerator 
           data={data}
@@ -247,9 +378,6 @@ const BlutdruckTracker = () => {
           contextFactors={contextFactors}
         />
       )}
-      
-      {/* Version display */}
-      <VersionDisplay />
     </div>
   );
 };
