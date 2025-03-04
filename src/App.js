@@ -106,9 +106,14 @@ const BlutdruckTracker = () => {
   const [currentEntry, setCurrentEntry] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
   
-  // Swipe state for view switching
+  // Swipe state for view switching with animation
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [swipeTransition, setSwipeTransition] = useState({
+    transform: 'translateX(0)',
+    opacity: 1,
+    transition: 'none'
+  });
   
   // Label for swipe instruction
   const [showSwipeLabel, setShowSwipeLabel] = useState(true);
@@ -184,42 +189,122 @@ const BlutdruckTracker = () => {
     return () => clearTimeout(timer);
   }, []);
   
-  // Touch event handlers for horizontal swiping
+  // Touch event handlers for horizontal swiping with animation
   const handleTouchStart = (e) => {
+    if (activeTab !== 'home') return; // Only enable swiping on home tab
+    
     setTouchStart({
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY
     });
     setTouchEnd(null);
+    
+    // Reset transition when touch starts
+    setSwipeTransition({
+      transform: 'translateX(0)',
+      opacity: 1,
+      transition: 'none'
+    });
   };
 
   const handleTouchMove = (e) => {
+    if (!touchStart || activeTab !== 'home') return;
+    
     setTouchEnd({
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY
     });
+    
+    const distanceX = e.targetTouches[0].clientX - touchStart.x;
+    const distanceY = Math.abs(e.targetTouches[0].clientY - touchStart.y);
+    const screenWidth = window.innerWidth;
+    
+    // If more vertical than horizontal, let normal scroll happen
+    if (distanceY > Math.abs(distanceX)) return;
+    
+    // Determine if swipe direction is valid
+    const validDirection = (viewType === 'morgen' && distanceX < 0) || 
+                         (viewType === 'abend' && distanceX > 0);
+    
+    // Apply transform with resistance if needed
+    if (validDirection) {
+      // Full movement in valid direction with smooth fade effect
+      setSwipeTransition({
+        transform: `translateX(${distanceX}px)`,
+        opacity: 1 - Math.min(0.3, Math.abs(distanceX) / screenWidth * 0.5),
+        transition: 'none'
+      });
+    } else {
+      // Resistance in invalid direction (reduced movement)
+      setSwipeTransition({
+        transform: `translateX(${distanceX * 0.2}px)`,
+        opacity: 1,
+        transition: 'none'
+      });
+    }
   };
 
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
+    if (!touchStart || !touchEnd || activeTab !== 'home') return;
     
     const distanceX = touchEnd.x - touchStart.x;
     const distanceY = Math.abs(touchEnd.y - touchStart.y);
-    const isHorizontalSwipe = distanceY < 100;
+    const isHorizontalSwipe = distanceY < Math.abs(distanceX) * 0.8;
+    const screenWidth = window.innerWidth;
+    const swipeThreshold = screenWidth * 0.2; // 20% of screen width
     
-    // Horizontal swipe detection (only if we're on the home tab)
-    if (isHorizontalSwipe && activeTab === 'home') {
-      if (distanceX < -50) { // Left swipe
-        // Switch to evening if currently on morning
-        if (viewType === 'morgen') {
+    if (isHorizontalSwipe) {
+      if (distanceX < -swipeThreshold && viewType === 'morgen') {
+        // Left swipe to evening - animate out
+        setSwipeTransition({
+          transform: `translateX(${-screenWidth}px)`,
+          opacity: 0,
+          transition: 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease-out'
+        });
+        
+        // Change view after animation
+        setTimeout(() => {
           setViewType('abend');
-        }
-      } else if (distanceX > 50) { // Right swipe
-        // Switch to morning if currently on evening
-        if (viewType === 'abend') {
+          // Immediate reset
+          setSwipeTransition({
+            transform: 'translateX(0)',
+            opacity: 1,
+            transition: 'none'
+          });
+        }, 300);
+      } else if (distanceX > swipeThreshold && viewType === 'abend') {
+        // Right swipe to morning - animate out
+        setSwipeTransition({
+          transform: `translateX(${screenWidth}px)`,
+          opacity: 0,
+          transition: 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease-out'
+        });
+        
+        // Change view after animation
+        setTimeout(() => {
           setViewType('morgen');
-        }
+          // Immediate reset
+          setSwipeTransition({
+            transform: 'translateX(0)',
+            opacity: 1,
+            transition: 'none'
+          });
+        }, 300);
+      } else {
+        // Snap back to center
+        setSwipeTransition({
+          transform: 'translateX(0)',
+          opacity: 1,
+          transition: 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease-out'
+        });
       }
+    } else {
+      // Reset if not a horizontal swipe
+      setSwipeTransition({
+        transform: 'translateX(0)',
+        opacity: 1,
+        transition: 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+      });
     }
     
     // Reset touch states
@@ -275,7 +360,7 @@ const BlutdruckTracker = () => {
           <>
             {/* Main content area with touch events for swiping */}
             <div 
-              className="relative" 
+              className="relative overflow-hidden" 
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -287,32 +372,45 @@ const BlutdruckTracker = () => {
                 </div>
               )}
               
-              {/* Toggle buttons for morning/evening */}
-              <ToggleViewButtons viewType={viewType} setViewType={setViewType} darkMode={darkMode} />
+              {/* Toggle buttons for morning/evening - only on desktop */}
+              <div className="hidden sm:block">
+                <ToggleViewButtons viewType={viewType} setViewType={setViewType} darkMode={darkMode} />
+              </div>
               
-              {/* Blood pressure summary */}
-              <BloodPressureSummary 
-                avgValues={avgValues} 
-                bpCategory={bpCategory} 
-                minMaxValues={minMaxValues}
-                darkMode={darkMode}
-              />
-              
-              {/* Context factors trend if available */}
-              {hasContextData && (
-                <ContextFactorsTrend 
-                  contextData={contextFactors}
+              {/* Content with animation */}
+              <div 
+                style={{
+                  transform: swipeTransition.transform,
+                  opacity: swipeTransition.opacity,
+                  transition: swipeTransition.transition
+                }}
+              >
+                {/* Blood pressure summary - with key to force re-render when viewType changes */}
+                <BloodPressureSummary 
+                  key={`summary-${viewType}`} 
+                  avgValues={avgValues} 
+                  bpCategory={bpCategory} 
+                  minMaxValues={minMaxValues}
                   darkMode={darkMode}
                 />
-              )}
-              
-              {/* Blood pressure chart */}
-              <BloodPressureChart 
-                data={dataWithMA} 
-                viewType={viewType} 
-                avgValues={avgValues}
-                darkMode={darkMode}
-              />
+                
+                {/* Context factors trend if available */}
+                {hasContextData && (
+                  <ContextFactorsTrend 
+                    contextData={contextFactors}
+                    darkMode={darkMode}
+                  />
+                )}
+                
+                {/* Blood pressure chart - with key to force re-render when viewType changes */}
+                <BloodPressureChart 
+                  key={`chart-${viewType}`}
+                  data={dataWithMA} 
+                  viewType={viewType} 
+                  avgValues={avgValues}
+                  darkMode={darkMode}
+                />
+              </div>
             </div>
           </>
         );
