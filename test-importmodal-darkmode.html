@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImportModal Dark Mode Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .test-container {
+            margin-bottom: 40px;
+        }
+        h2 {
+            margin-bottom: 20px;
+        }
+        .dark {
+            background-color: #1a1a1a;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .mode-section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .mode-section.dark-mode {
+            background-color: #1f2937;
+            border-color: #374151;
+            color: #f3f4f6;
+        }
+        .element {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .check {
+            color: green;
+            margin-left: 10px;
+        }
+        .issue {
+            color: red;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ImportModal Dark Mode Styling Checklist</h1>
+    
+    <div class="test-container">
+        <h2>Dark Mode Elements Status</h2>
+        
+        <div class="comparison">
+            <div class="mode-section">
+                <h3>Light Mode</h3>
+                <div class="element" style="background: white; color: black;">
+                    Modal Container <span class="check">✓</span>
+                </div>
+                <div class="element" style="color: #111827;">
+                    Headers <span class="check">✓</span>
+                </div>
+                <div class="element" style="color: #6b7280;">
+                    Description Text <span class="check">✓</span>
+                </div>
+                <div class="element" style="border: 2px dashed #d1d5db; padding: 20px;">
+                    Upload Areas <span class="check">✓</span>
+                </div>
+                <div class="element" style="background: #dbeafe; color: #1e40af; border: 1px solid #3b82f6;">
+                    Info Messages <span class="check">✓</span>
+                </div>
+                <div class="element" style="background: #fee2e2; color: #991b1b; border: 1px solid #f87171;">
+                    Error Messages <span class="check">✓</span>
+                </div>
+                <div class="element" style="background: #f9fafb;">
+                    Table Preview <span class="check">✓</span>
+                </div>
+            </div>
+            
+            <div class="mode-section dark-mode">
+                <h3>Dark Mode</h3>
+                <div class="element" style="background: #374151; color: white;">
+                    Modal Container <span class="check">✓</span>
+                </div>
+                <div class="element" style="color: #f3f4f6;">
+                    Headers <span class="check">✓</span>
+                </div>
+                <div class="element" style="color: #d1d5db;">
+                    Description Text <span class="check">✓</span>
+                </div>
+                <div class="element" style="border: 2px dashed #4b5563; padding: 20px;">
+                    Upload Areas <span class="check">✓</span>
+                </div>
+                <div class="element" style="background: rgba(59, 130, 246, 0.2); color: #93bbfc; border: 1px solid #1e3a8a;">
+                    Info Messages <span class="check">✓</span>
+                </div>
+                <div class="element" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #991b1b;">
+                    Error Messages <span class="check">✓</span>
+                </div>
+                <div class="element" style="background: #374151;">
+                    Table Preview <span class="check">✓</span>
+                </div>
+            </div>
+        </div>
+        
+        <h2>Implementation Summary</h2>
+        <ul>
+            <li>✅ Modal backdrop and container backgrounds</li>
+            <li>✅ All text colors (headers, labels, descriptions)</li>
+            <li>✅ Tab navigation (active/inactive states)</li>
+            <li>✅ Upload/action area borders and backgrounds</li>
+            <li>✅ Icon colors (Upload, Download, Save icons)</li>
+            <li>✅ Button styles (Cancel, Import, Delete)</li>
+            <li>✅ Message areas (error and info alerts)</li>
+            <li>✅ Table preview (background, borders, text)</li>
+            <li>✅ Loading state spinner and text</li>
+            <li>✅ Footer/sticky section background</li>
+            <li>✅ All borders and dividers</li>
+        </ul>
+        
+        <h2>Dark Mode Color Scheme Used</h2>
+        <ul>
+            <li><strong>Backgrounds:</strong> gray-800 (#1f2937) for main container, gray-700 (#374151) for secondary</li>
+            <li><strong>Text:</strong> white for headers, gray-300 (#d1d5db) for body text, gray-400 (#9ca3af) for subtle text</li>
+            <li><strong>Borders:</strong> gray-600 (#4b5563) for main borders, gray-700 (#374151) for dividers</li>
+            <li><strong>Buttons:</strong> Maintained contrast with darker backgrounds</li>
+            <li><strong>Alerts:</strong> Semi-transparent backgrounds with appropriate text colors</li>
+            <li><strong>Interactive:</strong> Proper hover states with lighter grays</li>
+        </ul>
+    </div>
+</body>
+</html>

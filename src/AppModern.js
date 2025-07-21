@@ -469,6 +469,9 @@ const BlutdruckTrackerModern = () => {
                   <ImportModal
                     onImport={importData}
                     onClose={() => setShowImportModal(false)}
+                    data={data}
+                    contextFactors={contextFactors}
+                    darkMode={darkMode}
                   />
                 </Suspense>
               </div>
