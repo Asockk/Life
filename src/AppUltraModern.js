@@ -1,8 +1,7 @@
 // Ultra Modern Blutdruck Tracker App
-import React, { useState, useEffect, useRef, createContext, useContext, lazy, Suspense } from 'react';
+import React, { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
 import { Sun, Moon, Sparkles, TrendingUp, Bell, User } from 'lucide-react';
-import { getEncryptionStatus } from './services/encryptionService';
-import { migrateOldDataFormats } from './utils/dataMigration';
+// Encryption and migration imports removed - not currently used
 
 // Custom Hook
 import useBloodPressureData from './hooks/useBloodPressureData';

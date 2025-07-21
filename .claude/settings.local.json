@@ -19,7 +19,11 @@
       "Bash(git push:*)",
       "Bash(npm run deploy:*)",
       "Bash(PORT=3006 npm start)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npm update)",
+      "Bash(npm info:*)",
+      "Bash(npm audit:*)",
+      "Bash(npx gh-pages:*)"
     ]
   },
   "enableAllProjectMcpServers": false

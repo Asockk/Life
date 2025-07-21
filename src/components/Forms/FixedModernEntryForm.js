@@ -1,7 +1,7 @@
 // Fixed Modern Entry Form with proper component structure
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { 
-  Activity, Calendar, Check, X, 
+  Activity, Check, X, 
   Sunrise, Moon, Coffee, Pill, Dumbbell, 
   Wine, AlertCircle
 } from 'lucide-react';
@@ -178,7 +178,7 @@ const FixedModernEntryForm = ({
         wochentag: weekdayShort
       }));
     }
-  }, [isEdit]);
+  }, [isEdit, formData.datum]);
 
   // Handle input changes
   const handleInputChange = (e) => {

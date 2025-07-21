@@ -380,10 +380,7 @@ function parseImportedDate(weekdayStr, dateStr) {
       const monthTranslation = {
         'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
         'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
-        'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
-        'Januar': 'Januar', 'Februar': 'Februar', 'März': 'März', 'April': 'April',
-        'Mai': 'Mai', 'Juni': 'Juni', 'Juli': 'Juli', 'August': 'August',
-        'September': 'September', 'Oktober': 'Oktober', 'November': 'November', 'Dezember': 'Dezember'
+        'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember'
       };
       
       const deMonth = monthTranslation[germanMonth] || germanMonth;
@@ -493,10 +490,7 @@ function parseDateFromCSV(dateStr) {
     const monthTranslation = {
       'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
       'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
-      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
-      'Januar': 'Januar', 'Februar': 'Februar', 'März': 'März', 'April': 'April',
-      'Mai': 'Mai', 'Juni': 'Juni', 'Juli': 'Juli', 'August': 'August',
-      'September': 'September', 'Oktober': 'Oktober', 'November': 'November', 'Dezember': 'Dezember'
+      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember'
     };
     
     const germanMonth = monthTranslation[month] || month;
@@ -547,10 +541,7 @@ function generalParseDateFromCSV(dateStr) {
     const monthTranslation = {
       'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
       'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
-      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
-      'Januar': 'Januar', 'Februar': 'Februar', 'März': 'März', 'April': 'April',
-      'Mai': 'Mai', 'Juni': 'Juni', 'Juli': 'Juli', 'August': 'August',
-      'September': 'September', 'Oktober': 'Oktober', 'November': 'November', 'Dezember': 'Dezember'
+      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember'
     };
     
     const germanMonth = monthTranslation[month] || month;
@@ -570,10 +561,7 @@ function generalParseDateFromCSV(dateStr) {
     const monthTranslation = {
       'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
       'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
-      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
-      'Januar': 'Januar', 'Februar': 'Februar', 'März': 'März', 'April': 'April',
-      'Mai': 'Mai', 'Juni': 'Juni', 'Juli': 'Juli', 'August': 'August',
-      'September': 'September', 'Oktober': 'Oktober', 'November': 'November', 'Dezember': 'Dezember'
+      'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember'
     };
     
     const germanMonth = monthTranslation[month] || month;

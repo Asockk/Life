@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Clock, Calendar, TrendingUp, Activity, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-         ResponsiveContainer, ComposedChart, Area, ReferenceLine } from 'recharts';
+         ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
   // Chart Theme basierend auf Dark Mode
@@ -360,7 +360,7 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
       weekdayData,
       interpretation
     };
-  }, [data]);
+  }, [data, extractYearFromDate, convertDisplayDateToISO]);
   
   // ================================================================
   // Jahreszeitliche Schwankungen

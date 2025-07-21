@@ -1,13 +1,13 @@
 // components/Table/VirtualizedBloodPressureTable.js
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FixedSizeList as List } from 'react-window';
-import { Edit, Trash, ChevronLeft, ChevronRight, Clock, Calendar, ArrowLeft, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
-import { getBloodPressureCategory, formatTableValue } from '../../utils/bloodPressureUtils';
+import { Edit, Trash, Clock, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { getBloodPressureCategory } from '../../utils/bloodPressureUtils';
 
 const VirtualizedBloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
   const ITEMS_PER_PAGE = 10;
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  // totalPages state removed - calculated inline
   const [currentData, setCurrentData] = useState([]);
   const [sortDescending, setSortDescending] = useState(true);
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);

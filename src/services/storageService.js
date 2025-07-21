@@ -1,7 +1,6 @@
 // services/storageService.js
 // Service für die lokale Datenpersistenz mit IndexedDB und localStorage Fallback
-import { encryptSensitiveFields, decryptSensitiveFields, encryptData, decryptData } from './encryptionService';
-import { encryptedStorage } from './cryptoService';
+import { encryptSensitiveFields, decryptSensitiveFields } from './encryptionService';
 import { repairMeasurementData, needsDataRepair } from '../utils/dataMigration';
 
 // Database Constants
@@ -387,16 +386,9 @@ export async function loadMeasurements() {
     
     // Fallback auf localStorage
     try {
-      let parsedData;
-      
-      // Versuche verschlüsselte Daten zu laden wenn Verschlüsselung aktiviert
-      if (encryptedStorage.isEncryptionEnabled()) {
-        parsedData = await encryptedStorage.loadEncrypted('blutdruck_messungen');
-        if (!parsedData) parsedData = [];
-      } else {
-        const storedData = localStorage.getItem('blutdruck_messungen');
-        parsedData = storedData ? JSON.parse(storedData) : [];
-      }
+      // Nur unverschlüsselte Daten aus localStorage laden
+      const storedData = localStorage.getItem('blutdruck_messungen');
+      let parsedData = storedData ? JSON.parse(storedData) : [];
       
       // Ensure all loaded measurements have standardized dates in the CORRECT format
       parsedData = parsedData.map(measurement => {
@@ -535,11 +527,8 @@ export async function saveContextFactors(contextFactors) {
       const oldData = localStorage.getItem('blutdruck_kontextfaktoren');
       localStorage.setItem('blutdruck_kontextfaktoren_backup', oldData || '{}');
       
-      // Verschlüssele Kontextfaktoren für localStorage
-      const encryptedContextFactors = encryptData(contextFactors);
-      
-      // Neue Daten speichern
-      localStorage.setItem('blutdruck_kontextfaktoren', encryptedContextFactors);
+      // Kontextfaktoren direkt als JSON speichern
+      localStorage.setItem('blutdruck_kontextfaktoren', JSON.stringify(contextFactors));
       console.log('Kontextfaktoren in localStorage gespeichert (Fallback)');
       
       // Backup löschen nach erfolgreichem Speichern
@@ -654,9 +643,9 @@ export async function loadContextFactors() {
     // Fallback auf localStorage
     try {
       const storedData = localStorage.getItem('blutdruck_kontextfaktoren');
-      const decryptedData = storedData ? decryptData(storedData) : {};
+      const parsedData = storedData ? JSON.parse(storedData) : {};
       console.log('Kontextfaktoren aus localStorage geladen (Fallback)');
-      return decryptedData || {};
+      return parsedData;
     } catch (e) {
       console.error('Auch localStorage-Fallback fehlgeschlagen:', e);
       return {};

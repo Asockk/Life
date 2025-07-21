@@ -1,6 +1,6 @@
 // components/Forms/ImportModal.js
 import React, { useState } from 'react';
-import { Check, X, FileText, Download, Upload, Save, Trash2 } from 'lucide-react';
+import { Check, X, Download, Upload, Save, Trash2 } from 'lucide-react';
 import { parseCSVData } from '../../utils/dataUtils';
 import { exportToCSV } from '../../utils/csvExportUtils';
 

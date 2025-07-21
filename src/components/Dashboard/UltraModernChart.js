@@ -1,16 +1,15 @@
 // Ultra Modern Blood Pressure Chart
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useRef, memo } from 'react';
 import { 
   AreaChart, Area, LineChart, Line, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, 
-  ReferenceLine, Dot, Bar, BarChart, ComposedChart
+  ReferenceLine, ComposedChart
 } from 'recharts';
 import { Calendar, Eye, Zap, ChevronRight, Heart } from 'lucide-react';
 
 const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
   const [selectedMetric, setSelectedMetric] = useState('all');
-  const [isAnimating, setIsAnimating] = useState(true);
-  const chartRef = useRef(null);
+  // Animation state removed - not currently used
   
   const prefix = viewType === 'morgen' ? 'morgen' : 'abend';
   

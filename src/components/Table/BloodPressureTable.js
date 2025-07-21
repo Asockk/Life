@@ -130,7 +130,7 @@ const BloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     const end = Math.min(start + ITEMS_PER_PAGE, sortedData.length);
     setCurrentData(sortedData.slice(start, end));
-  }, [data, currentPage, sortDescending]);
+  }, [data, currentPage, sortDescending, sortedData]);
   
   // Sortierreihenfolge umschalten
   const toggleSortDirection = () => {

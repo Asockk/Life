@@ -2,8 +2,8 @@
 // Verbesserte Version mit zentralisiertem State Management und Race Condition Vermeidung
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { prepareDataWithMovingAverages, prepareDataWithAverages, sortDataByDate, standardizeDateFormat } from '../utils/dataUtils';
-import { getBloodPressureCategory, calculateAverage } from '../utils/bloodPressureUtils';
-import { validateBloodPressure, validateForm, formatDateForDisplay } from '../utils/validationUtils';
+import { getBloodPressureCategory } from '../utils/bloodPressureUtils';
+import { validateForm } from '../utils/validationUtils';
 import { useDialog } from '../contexts/DialogContext';
 
 // Importieren der neuen Storage-Service-Funktionen
@@ -151,7 +151,7 @@ const useBloodPressureData = () => {
           console.log('Kontextfaktoren gespeichert');
           break;
         case 'settings':
-          result = await saveSetting('viewType', dataToSave);
+          await saveSetting('viewType', dataToSave);
           console.log(`Ansichtstyp "${dataToSave}" gespeichert`);
           break;
         default:
@@ -175,7 +175,7 @@ const useBloodPressureData = () => {
       // Zeige Fehlermeldung
       showStatusMessage('Fehler beim Speichern. Bitte versuchen Sie es erneut.', 'error');
     }
-  }, []);
+  }, [showStatusMessage]);
   
   // Debounced Speicherfunktionen
   const debouncedSaveMeasurements = useMemo(
@@ -547,7 +547,7 @@ const useBloodPressureData = () => {
 
     showStatusMessage('Eintrag erfolgreich hinzugefügt!', 'success');
     return { success: true, message: 'Eintrag erfolgreich hinzugefügt!' };
-  }, [data, showStatusMessage, convertDisplayDateToISO]);
+  }, [data, showStatusMessage, convertDisplayDateToISO, setData, setContextFactors]);
 
   // Eintrag aktualisieren
   const updateEntry = useCallback((id, formData, contextData) => {
@@ -633,7 +633,7 @@ const useBloodPressureData = () => {
 
     showStatusMessage('Eintrag erfolgreich aktualisiert!', 'success');
     return { success: true, message: 'Eintrag erfolgreich aktualisiert!' };
-  }, [data, showStatusMessage, convertDisplayDateToISO]);
+  }, [data, showStatusMessage, convertDisplayDateToISO, setData, setContextFactors]);
 
   // Eintrag löschen
   const deleteEntry = useCallback((id) => {

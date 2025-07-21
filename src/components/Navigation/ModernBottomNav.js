@@ -1,5 +1,5 @@
 // Modern Bottom Navigation with iOS-inspired Design
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Home, PieChart, Plus, List, Settings } from 'lucide-react';
 
 const ModernBottomNav = ({ activeTab, setActiveTab, onAddNew, darkMode }) => {

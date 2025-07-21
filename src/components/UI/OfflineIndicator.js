@@ -1,6 +1,6 @@
 // Offline Indicator Component
 import React, { useState, useEffect } from 'react';
-import { WifiOff, Wifi, RefreshCw, Cloud, CloudOff } from 'lucide-react';
+import { WifiOff, Wifi, RefreshCw, CloudOff } from 'lucide-react';
 import syncService from '../../services/syncService';
 
 const OfflineIndicator = ({ darkMode }) => {
