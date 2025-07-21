@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkblutdruck_tracker=self.webpackChunkblutdruck_tracker||[]).push([[646],{6646:(e,t,a)=>{a.r(t),a.d(t,{default:()=>c});var r=a(5043),l=a(579);const n=(0,r.lazy)((()=>a.e(710).then(a.bind(a,3710)))),u=(0,r.lazy)((()=>Promise.all([a.e(417),a.e(638)]).then(a.bind(a,5638)))),c=e=>{let{data:t,...a}=e;const r=t.length>50?u:n;return(0,l.jsx)(r,{data:t,...a})}}}]);
+//# sourceMappingURL=646.fad0eeab.chunk.js.map
