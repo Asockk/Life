@@ -127,6 +127,24 @@ const useBloodPressureData = () => {
     };
   }, []);
   
+  // Funktion: Statusnachricht anzeigen - VERBESSERTE VERSION
+  const showStatusMessage = useCallback((text, type) => {
+    // Setze zunächst eine leere Nachricht, um sicherzustellen, dass eine neue Nachricht immer
+    // einen neuen useEffect-Durchlauf in der StatusMessage-Komponente auslöst,
+    // selbst wenn dieselbe Nachricht zweimal hintereinander gesendet wird
+    setStatusMessage({ text: '', type: '' });
+    
+    // Dann setze die eigentliche Nachricht mit einem kleinen Zeitabstand
+    const timeoutId = setTimeout(() => {
+      setStatusMessage({ text, type });
+    }, 10);
+    
+    // Timeout zur Cleanup-Liste hinzufügen
+    timeoutRefs.current.push(timeoutId);
+    
+    // Die automatische Ausblendung wird jetzt in der StatusMessage-Komponente gesteuert
+  }, []);
+  
   // Zentralisierte Speicherfunktion mit Queue-Management
   const saveDataToStorage = useCallback(async (dataType, dataToSave) => {
     // Prüfe ob bereits gespeichert wird
@@ -227,24 +245,6 @@ const useBloodPressureData = () => {
       debouncedSaveSettings(viewType);
     }
   }, [viewType, dataLoaded, debouncedSaveSettings]);
-  
-  // Funktion: Statusnachricht anzeigen - VERBESSERTE VERSION
-  const showStatusMessage = useCallback((text, type) => {
-    // Setze zunächst eine leere Nachricht, um sicherzustellen, dass eine neue Nachricht immer
-    // einen neuen useEffect-Durchlauf in der StatusMessage-Komponente auslöst,
-    // selbst wenn dieselbe Nachricht zweimal hintereinander gesendet wird
-    setStatusMessage({ text: '', type: '' });
-    
-    // Dann setze die eigentliche Nachricht mit einem kleinen Zeitabstand
-    const timeoutId = setTimeout(() => {
-      setStatusMessage({ text, type });
-    }, 10);
-    
-    // Timeout zur Cleanup-Liste hinzufügen
-    timeoutRefs.current.push(timeoutId);
-    
-    // Die automatische Ausblendung wird jetzt in der StatusMessage-Komponente gesteuert
-  }, []);
   
   // Cleanup für alle Timeouts
   useEffect(() => {
