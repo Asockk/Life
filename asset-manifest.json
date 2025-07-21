@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.css": "/Life/static/css/main.af3b5a12.css",
-    "main.js": "/Life/static/js/main.fb3cc91b.js",
-    "static/js/104.1da33c00.chunk.js": "/Life/static/js/104.1da33c00.chunk.js",
+    "main.css": "/Life/static/css/main.48ce1102.css",
+    "main.js": "/Life/static/js/main.135538c5.js",
+    "static/js/104.51b6adf7.chunk.js": "/Life/static/js/104.51b6adf7.chunk.js",
     "static/js/646.1825f146.chunk.js": "/Life/static/js/646.1825f146.chunk.js",
-    "static/js/561.7154133e.chunk.js": "/Life/static/js/561.7154133e.chunk.js",
+    "static/js/561.1b07f71b.chunk.js": "/Life/static/js/561.1b07f71b.chunk.js",
     "static/js/644.dd5083a1.chunk.js": "/Life/static/js/644.dd5083a1.chunk.js",
     "static/js/453.27990f1a.chunk.js": "/Life/static/js/453.27990f1a.chunk.js",
     "static/js/710.c3a253c3.chunk.js": "/Life/static/js/710.c3a253c3.chunk.js",
@@ -15,11 +15,11 @@
     "static/js/417.047b6b0b.chunk.js": "/Life/static/js/417.047b6b0b.chunk.js",
     "static/js/931.386cd688.chunk.js": "/Life/static/js/931.386cd688.chunk.js",
     "index.html": "/Life/index.html",
-    "main.af3b5a12.css.map": "/Life/static/css/main.af3b5a12.css.map",
-    "main.fb3cc91b.js.map": "/Life/static/js/main.fb3cc91b.js.map",
-    "104.1da33c00.chunk.js.map": "/Life/static/js/104.1da33c00.chunk.js.map",
+    "main.48ce1102.css.map": "/Life/static/css/main.48ce1102.css.map",
+    "main.135538c5.js.map": "/Life/static/js/main.135538c5.js.map",
+    "104.51b6adf7.chunk.js.map": "/Life/static/js/104.51b6adf7.chunk.js.map",
     "646.1825f146.chunk.js.map": "/Life/static/js/646.1825f146.chunk.js.map",
-    "561.7154133e.chunk.js.map": "/Life/static/js/561.7154133e.chunk.js.map",
+    "561.1b07f71b.chunk.js.map": "/Life/static/js/561.1b07f71b.chunk.js.map",
     "644.dd5083a1.chunk.js.map": "/Life/static/js/644.dd5083a1.chunk.js.map",
     "453.27990f1a.chunk.js.map": "/Life/static/js/453.27990f1a.chunk.js.map",
     "710.c3a253c3.chunk.js.map": "/Life/static/js/710.c3a253c3.chunk.js.map",
@@ -31,7 +31,7 @@
     "931.386cd688.chunk.js.map": "/Life/static/js/931.386cd688.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.af3b5a12.css",
-    "static/js/main.fb3cc91b.js"
+    "static/css/main.48ce1102.css",
+    "static/js/main.135538c5.js"
   ]
 }
