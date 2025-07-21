@@ -1,9 +1,9 @@
 // components/Table/BloodPressureTableWrapper.js
-import React, { lazy } from 'react';
+import React from 'react';
 
-// Import both table implementations
-const StandardTable = lazy(() => import('./BloodPressureTable'));
-const VirtualizedTable = lazy(() => import('./VirtualizedBloodPressureTable'));
+// Import both table implementations directly
+import StandardTable from './BloodPressureTable';
+import VirtualizedTable from './VirtualizedBloodPressureTable';
 
 const BloodPressureTableWrapper = ({ data, ...props }) => {
   // Use virtualized table for large datasets (more than 50 entries)
