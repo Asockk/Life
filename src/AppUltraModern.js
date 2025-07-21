@@ -173,7 +173,7 @@ const UltraModernBlutdruckTracker = () => {
         return (
           <CriticalErrorBoundary componentName="AdvancedStatistics">
             <Suspense fallback={<LoadingFallback message="Lade Statistiken..." />}>
-              <AdvancedStatistics data={data} contextFactors={contextFactors} />
+              <AdvancedStatistics data={data} contextFactors={contextFactors} darkMode={darkMode} />
             </Suspense>
           </CriticalErrorBoundary>
         );

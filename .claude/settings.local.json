@@ -15,7 +15,11 @@
       "Bash(PUBLIC_URL=/ npm start)",
       "Bash(PORT=3005 npm start)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(PORT=3006 npm start)",
+      "Bash(rm:*)"
     ]
   },
   "enableAllProjectMcpServers": false

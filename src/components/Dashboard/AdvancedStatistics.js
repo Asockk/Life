@@ -4,7 +4,21 @@ import { Clock, Calendar, TrendingUp, Activity, ChevronDown, ChevronUp, AlertTri
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
          ResponsiveContainer, ComposedChart, Area, ReferenceLine } from 'recharts';
 
-const AdvancedStatistics = ({ data, contextFactors }) => {
+const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
+  // Chart Theme basierend auf Dark Mode
+  const chartTheme = {
+    text: darkMode ? '#d1d5db' : '#374151',
+    grid: darkMode ? '#374151' : '#e5e7eb',
+    tooltip: {
+      contentStyle: {
+        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+        borderRadius: '0.375rem'
+      },
+      labelStyle: { color: darkMode ? '#d1d5db' : '#374151' },
+      itemStyle: { color: darkMode ? '#d1d5db' : '#374151' }
+    }
+  };
   // Extrahiert das Jahr aus einem Datumsstring
   const extractYearFromDate = (dateStr) => {
     if (!dateStr) return new Date().getFullYear(); // Aktuelles Jahr als Fallback
@@ -699,13 +713,13 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
   }
   
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-      <h2 className="text-lg font-semibold mb-4">Erweiterte Statistiken &amp; Trends</h2>
+    <div className={`p-4 rounded-lg shadow-sm mb-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+      <h2 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>Erweiterte Statistiken &amp; Trends</h2>
       
       {/* Akkordeon-Layout für bessere Mobile-Ansicht */}
       <div className="space-y-4">
         {/* 1. Tag/Nacht-Rhythmus */}
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div 
             className="flex items-center justify-between p-4 cursor-pointer"
             onClick={() => toggleSection('daynight')}
@@ -713,8 +727,8 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
             <div className="flex items-center">
               <Clock size={22} className="text-blue-600 mr-3" />
               <div>
-                <h3 className="font-medium">Tag/Nacht-Rhythmus</h3>
-                <p className="text-sm text-gray-600 mt-0.5">
+                <h3 className={`font-medium ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>Tag/Nacht-Rhythmus</h3>
+                <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                   {!dayNightAnalysis?.hasEnoughData 
                     ? "Nicht genügend Daten verfügbar" 
                     : dayNightAnalysis.timeDiff.sys > 0 
@@ -731,22 +745,22 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
           </div>
           
           {expandedSections.daynight && (
-            <div className="p-4 pt-0 border-t border-gray-100">
+            <div className={`p-4 pt-0 border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
               {!dayNightAnalysis?.hasEnoughData ? (
-                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+                <div className={`p-3 rounded-md flex items-start border ${darkMode ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
                   <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800">{dayNightAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
+                  <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-amber-800'}`}>{dayNightAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
                 </div>
               ) : (
                 <>
                   <div className="mb-4">
-                    <div className="p-3 bg-blue-50 rounded-md mb-3">
-                      <p className="text-sm">{dayNightAnalysis.interpretation}</p>
+                    <div className={`p-3 rounded-md mb-3 ${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                      <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{dayNightAnalysis.interpretation}</p>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                       <div>
-                        <p className="text-sm font-medium mb-1">Morgen-Abend-Vergleich:</p>
+                        <p className={`text-sm font-medium mb-1 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Morgen-Abend-Vergleich:</p>
                         <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-2 rounded">
                           <div className="border-r border-gray-200 pr-2">
                             <p><span className="font-medium">Morgens:</span> {dayNightAnalysis.avgMorning.sys}/{dayNightAnalysis.avgMorning.dia} mmHg</p>
@@ -847,11 +861,11 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
           </div>
           
           {expandedSections.weekday && (
-            <div className="p-4 pt-0 border-t border-gray-100">
+            <div className={`p-4 pt-0 border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
               {!weekdayAnalysis || !weekdayAnalysis.hasEnoughData ? (
-                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+                <div className={`p-3 rounded-md flex items-start border ${darkMode ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
                   <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800">
+                  <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-amber-800'}`}>
                     {!weekdayAnalysis ? "Diese Analyse benötigt Daten aus mindestens einer vollen Woche." : 
                       "Es liegen noch nicht genügend Messungen für alle Wochentage vor."}
                   </p>
@@ -933,11 +947,11 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
           </div>
           
           {expandedSections.seasonal && (
-            <div className="p-4 pt-0 border-t border-gray-100">
+            <div className={`p-4 pt-0 border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
               {!seasonalAnalysis?.hasEnoughData ? (
-                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+                <div className={`p-3 rounded-md flex items-start border ${darkMode ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
                   <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800">{seasonalAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
+                  <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-amber-800'}`}>{seasonalAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
                 </div>
               ) : (
                 <>
@@ -1009,7 +1023,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
         </div>
         
         {/* 4. Kontextfaktor-Korrelation */}
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div 
             className="flex items-center justify-between p-4 cursor-pointer"
             onClick={() => toggleSection('correlation')}
@@ -1017,8 +1031,8 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
             <div className="flex items-center">
               <Activity size={22} className="text-purple-600 mr-3" />
               <div>
-                <h3 className="font-medium">Kontextfaktor-Korrelation</h3>
-                <p className="text-sm text-gray-600 mt-0.5">
+                <h3 className={`font-medium ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>Kontextfaktor-Korrelation</h3>
+                <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                   {!contextCorrelationAnalysis?.hasEnoughData 
                     ? "Nicht genügend Kontextdaten" 
                     : "Analysiert Einflussfaktoren auf Ihren Blutdruck"}
@@ -1031,27 +1045,27 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
           </div>
           
           {expandedSections.correlation && (
-            <div className="p-4 pt-0 border-t border-gray-100">
+            <div className={`p-4 pt-0 border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
               {!contextCorrelationAnalysis?.hasEnoughData ? (
-                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+                <div className={`p-3 rounded-md flex items-start border ${darkMode ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
                   <AlertTriangle size={20} className="text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800">{contextCorrelationAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
+                  <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-amber-800'}`}>{contextCorrelationAnalysis?.message || "Für diese Analyse werden mehr Daten benötigt."}</p>
                 </div>
               ) : (
                 <>
-                  <div className="p-3 bg-blue-50 rounded-md mb-3">
-                    <p className="text-sm">{contextCorrelationAnalysis.interpretation}</p>
+                  <div className={`p-3 rounded-md mb-3 ${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                    <p className={`text-sm ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>{contextCorrelationAnalysis.interpretation}</p>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     {Object.entries(contextCorrelationAnalysis.factorAnalysis)
                       .filter(([_, info]) => info.correlation && info.impact !== 'gering')
                       .map(([factor, info]) => (
-                        <div key={factor} className="bg-gray-50 p-3 rounded-md">
-                          <h4 className="font-medium text-sm mb-2">{info.name}</h4>
+                        <div key={factor} className={`p-3 rounded-md ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                          <h4 className={`font-medium text-sm mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>{info.name}</h4>
                           
                           {!info.hasEnoughDataPoints ? (
-                            <p className="text-xs text-gray-600">
+                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                               Nicht genügend Daten für eine zuverlässige Analyse.
                             </p>
                           ) : (
@@ -1062,10 +1076,13 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
                                     data={info.chartData}
                                     margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
                                   >
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
+                                    <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                                    <XAxis dataKey="name" tick={{ fill: chartTheme.text }} />
+                                    <YAxis domain={['dataMin - 5', 'dataMax + 5']} tick={{ fill: chartTheme.text }} />
                                     <Tooltip 
+                                      contentStyle={chartTheme.tooltip.contentStyle}
+                                      labelStyle={chartTheme.tooltip.labelStyle}
+                                      itemStyle={chartTheme.tooltip.itemStyle}
                                       formatter={(value, name) => [
                                         name === 'systolisch' ? `${value} mmHg` : value,
                                         name === 'systolisch' ? 'Systolischer Blutdruck' : name
@@ -1085,7 +1102,7 @@ const AdvancedStatistics = ({ data, contextFactors }) => {
                               
                               {info.correlation && (
                                 <div className="mt-2 text-xs">
-                                  <span className="font-medium">Einfluss: </span>
+                                  <span className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Einfluss: </span>
                                   <span className={`${
                                     info.impact === 'stark' ? 'font-bold' : ''
                                   } ${
