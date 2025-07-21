@@ -1,5 +1,8 @@
 // services/storageService.js
 // Service für die lokale Datenpersistenz mit IndexedDB und localStorage Fallback
+import { encryptSensitiveFields, decryptSensitiveFields, encryptData, decryptData } from './encryptionService';
+import { encryptedStorage } from './cryptoService';
+import { repairMeasurementData, needsDataRepair } from '../utils/dataMigration';
 
 // Database Constants
 const DB_NAME = 'BlutdruckTrackerDB';
@@ -154,11 +157,12 @@ async function initDB() {
 // ======================================================================
 
 /**
- * Speichert alle Blutdruckmessungen
+ * Speichert alle Blutdruckmessungen (transaktional und sicher)
  * @param {Array} data Array von Messungs-Objekten
  * @returns {Promise<boolean>} Erfolg der Operation
  */
 export async function saveMeasurements(data) {
+  console.log('[STORAGE] saveMeasurements called with:', data);
   try {
     // Sicherstellen, dass wir ein Array haben
     if (!Array.isArray(data)) {
@@ -169,50 +173,175 @@ export async function saveMeasurements(data) {
     const enhancedData = data.map(measurement => {
       // Immer das _standardDate aktualisieren mit der lokalen Funktion
       const standardDate = standardizeDateFormat(measurement.datum, measurement.tag);
+      // TEMPORÄR: Verschlüsselung deaktiviert wegen Datenproblemen
+      // const encrypted = encryptSensitiveFields({ ...measurement, _standardDate: standardDate });
+      // return encrypted;
       return { ...measurement, _standardDate: standardDate };
     });
     
     const db = await initDB();
+    
+    // WICHTIG: Erst alte Daten sichern, bevor wir löschen
+    const backupData = await loadMeasurementsInternal(db);
+    
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([STORES.MEASUREMENTS], 'readwrite');
       const store = transaction.objectStore(STORES.MEASUREMENTS);
       
-      // Lösche alte Daten zuerst (vollständiger Ersatz)
-      store.clear();
+      // Transaktion als atomare Operation
+      let addedCount = 0;
+      const errors = [];
       
-      // Speichere alle neuen Daten
-      let successCount = 0;
-      enhancedData.forEach(measurement => {
-        try {
-          store.add(measurement);
-          successCount++;
-        } catch (e) {
-          console.error('Fehler beim Speichern einer Messung:', e, measurement);
-        }
-      });
+      // Schritt 1: Alte Daten löschen
+      const clearRequest = store.clear();
       
-      transaction.oncomplete = () => {
-        console.log(`${successCount} von ${enhancedData.length} Messungen erfolgreich gespeichert`);
-        resolve(true);
+      clearRequest.onsuccess = () => {
+        // Schritt 2: Neue Daten hinzufügen
+        enhancedData.forEach((measurement, index) => {
+          const addRequest = store.add(measurement);
+          
+          addRequest.onsuccess = () => {
+            addedCount++;
+          };
+          
+          addRequest.onerror = (event) => {
+            errors.push(`Fehler bei Messung ${index}: ${event.target.error}`);
+          };
+        });
       };
       
-      transaction.onerror = () => {
-        reject(new Error('Fehler beim Speichern der Messungen'));
+      clearRequest.onerror = (event) => {
+        // Wenn Clear fehlschlägt, brechen wir ab
+        reject(new Error(`Fehler beim Löschen alter Daten: ${event.target.error}`));
+      };
+      
+      transaction.oncomplete = async () => {
+        if (addedCount === enhancedData.length) {
+          console.log(`${addedCount} Messungen erfolgreich gespeichert`);
+          resolve(true);
+        } else {
+          // Nicht alle Daten konnten gespeichert werden
+          console.error('Nicht alle Messungen konnten gespeichert werden:', errors);
+          
+          // Versuche Backup wiederherzustellen
+          try {
+            await restoreMeasurementsBackup(backupData);
+            reject(new Error(`Speichern fehlgeschlagen. Backup wiederhergestellt. Fehler: ${errors.join(', ')}}`));
+          } catch (restoreError) {
+            reject(new Error(`Speichern und Backup-Wiederherstellung fehlgeschlagen: ${errors.join(', ')}}`));
+          }
+        }
+      };
+      
+      transaction.onerror = async (event) => {
+        console.error('Transaktion fehlgeschlagen:', event.target.error);
+        
+        // Versuche Backup wiederherzustellen
+        try {
+          await restoreMeasurementsBackup(backupData);
+          reject(new Error(`Transaktion fehlgeschlagen. Backup wiederhergestellt.`));
+        } catch (restoreError) {
+          reject(new Error(`Transaktion und Backup-Wiederherstellung fehlgeschlagen`));
+        }
       };
     });
   } catch (error) {
     console.error('Fehler bei saveMeasurements:', error);
     
-    // Fallback auf localStorage
+    // Fallback auf localStorage mit Backup
     try {
-      localStorage.setItem('blutdruck_messungen', JSON.stringify(data));
+      // Backup der alten Daten
+      const oldData = localStorage.getItem('blutdruck_messungen');
+      localStorage.setItem('blutdruck_messungen_backup', oldData || '[]');
+      
+      // TEMPORÄR: Verschlüsselung deaktiviert
+      const dataToSave = data.map(measurement => {
+        const standardDate = standardizeDateFormat(measurement.datum, measurement.tag);
+        return { ...measurement, _standardDate: standardDate };
+      });
+      
+      // Neue Daten speichern (mit Verschlüsselung wenn aktiviert)
+      if (encryptedStorage.isEncryptionEnabled()) {
+        await encryptedStorage.saveEncrypted('blutdruck_messungen', dataToSave);
+      } else {
+        localStorage.setItem('blutdruck_messungen', JSON.stringify(dataToSave));
+      }
       console.log('Messungen in localStorage gespeichert (Fallback)');
+      
+      // Backup löschen nach erfolgreichem Speichern
+      localStorage.removeItem('blutdruck_messungen_backup');
       return true;
     } catch (e) {
       console.error('Auch localStorage-Fallback fehlgeschlagen:', e);
+      
+      // Versuche Backup wiederherzustellen
+      try {
+        const backup = localStorage.getItem('blutdruck_messungen_backup');
+        if (backup) {
+          localStorage.setItem('blutdruck_messungen', backup);
+        }
+      } catch (restoreError) {
+        console.error('Backup-Wiederherstellung fehlgeschlagen:', restoreError);
+      }
+      
       return false;
     }
   }
+}
+
+/**
+ * Interne Funktion zum Laden von Messungen mit bestehender DB-Verbindung
+ * @param {IDBDatabase} db Offene Datenbankverbindung
+ * @returns {Promise<Array>} Array aller Messungen
+ */
+async function loadMeasurementsInternal(db) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.MEASUREMENTS], 'readonly');
+    const store = transaction.objectStore(STORES.MEASUREMENTS);
+    const request = store.getAll();
+    
+    request.onsuccess = () => {
+      resolve(request.result || []);
+    };
+    
+    request.onerror = () => {
+      reject(new Error('Fehler beim Laden der Messungen für Backup'));
+    };
+  });
+}
+
+/**
+ * Stellt Messungen aus Backup wieder her
+ * @param {Array} backupData Backup-Daten
+ * @returns {Promise<boolean>} Erfolg der Operation
+ */
+async function restoreMeasurementsBackup(backupData) {
+  if (!backupData || !Array.isArray(backupData) || backupData.length === 0) {
+    return true; // Nichts wiederherzustellen
+  }
+  
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.MEASUREMENTS], 'readwrite');
+    const store = transaction.objectStore(STORES.MEASUREMENTS);
+    
+    // Lösche aktuelle (fehlerhafte) Daten
+    store.clear();
+    
+    // Stelle Backup wieder her
+    backupData.forEach(measurement => {
+      store.add(measurement);
+    });
+    
+    transaction.oncomplete = () => {
+      console.log('Backup erfolgreich wiederhergestellt');
+      resolve(true);
+    };
+    
+    transaction.onerror = () => {
+      reject(new Error('Fehler beim Wiederherstellen des Backups'));
+    };
+  });
 }
 
 /**
@@ -220,6 +349,7 @@ export async function saveMeasurements(data) {
  * @returns {Promise<Array>} Array aller Messungen
  */
 export async function loadMeasurements() {
+  console.log('[STORAGE] loadMeasurements called');
   try {
     const db = await initDB();
     return new Promise((resolve, reject) => {
@@ -231,10 +361,17 @@ export async function loadMeasurements() {
         const measurements = request.result;
         
         // Ensure all loaded measurements have standardized dates in the CORRECT format
-        const enhancedMeasurements = measurements.map(measurement => {
+        let enhancedMeasurements = measurements.map(measurement => {
+          // TEMPORÄR: Entschlüsselung deaktiviert
+          // const decrypted = decryptSensitiveFields(measurement);
+          const decrypted = measurement;
+          
+          // Repariere die Daten falls nötig
+          const repaired = repairMeasurementData([decrypted])[0];
+          
           // Immer das _standardDate aktualisieren mit der lokalen Funktion
-          const standardDate = standardizeDateFormat(measurement.datum, measurement.tag);
-          return { ...measurement, _standardDate: standardDate };
+          const standardDate = standardizeDateFormat(repaired.datum, repaired.tag);
+          return { ...repaired, _standardDate: standardDate };
         });
         
         console.log(`${enhancedMeasurements.length} Messungen erfolgreich geladen`);
@@ -250,14 +387,29 @@ export async function loadMeasurements() {
     
     // Fallback auf localStorage
     try {
-      const storedData = localStorage.getItem('blutdruck_messungen');
-      let parsedData = storedData ? JSON.parse(storedData) : [];
+      let parsedData;
+      
+      // Versuche verschlüsselte Daten zu laden wenn Verschlüsselung aktiviert
+      if (encryptedStorage.isEncryptionEnabled()) {
+        parsedData = await encryptedStorage.loadEncrypted('blutdruck_messungen');
+        if (!parsedData) parsedData = [];
+      } else {
+        const storedData = localStorage.getItem('blutdruck_messungen');
+        parsedData = storedData ? JSON.parse(storedData) : [];
+      }
       
       // Ensure all loaded measurements have standardized dates in the CORRECT format
       parsedData = parsedData.map(measurement => {
+        // TEMPORÄR: Entschlüsselung deaktiviert
+        // const decrypted = decryptSensitiveFields(measurement);
+        const decrypted = measurement;
+        
+        // Repariere die Daten falls nötig
+        const repaired = repairMeasurementData([decrypted])[0];
+        
         // Immer das _standardDate aktualisieren mit der lokalen Funktion
-        const standardDate = standardizeDateFormat(measurement.datum, measurement.tag);
-        return { ...measurement, _standardDate: standardDate };
+        const standardDate = standardizeDateFormat(repaired.datum, repaired.tag);
+        return { ...repaired, _standardDate: standardDate };
       });
       
       console.log(`${parsedData.length} Messungen aus localStorage geladen (Fallback)`);
@@ -299,7 +451,7 @@ function denormalizeContextFactors(normalizedData) {
 }
 
 /**
- * Speichert alle Kontextfaktoren
+ * Speichert alle Kontextfaktoren (transaktional und sicher)
  * @param {Object} contextFactors Kontextfaktoren-Objekt
  * @returns {Promise<boolean>} Erfolg der Operation
  */
@@ -309,40 +461,161 @@ export async function saveContextFactors(contextFactors) {
     const normalizedData = normalizeContextFactors(contextFactors);
     
     const db = await initDB();
+    
+    // WICHTIG: Erst alte Daten sichern, bevor wir löschen
+    const backupData = await loadContextFactorsInternal(db);
+    
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([STORES.CONTEXT_FACTORS], 'readwrite');
       const store = transaction.objectStore(STORES.CONTEXT_FACTORS);
       
-      // Lösche alte Daten zuerst
-      store.clear();
+      let addedCount = 0;
+      const errors = [];
       
-      // Speichere alle neuen Daten
-      normalizedData.forEach(entry => {
-        store.add(entry);
-      });
+      // Schritt 1: Alte Daten löschen
+      const clearRequest = store.clear();
       
-      transaction.oncomplete = () => {
-        console.log(`${normalizedData.length} Kontextfaktoren erfolgreich gespeichert`);
-        resolve(true);
+      clearRequest.onsuccess = () => {
+        // Schritt 2: Neue Daten hinzufügen
+        normalizedData.forEach((entry, index) => {
+          // TEMPORÄR: Verschlüsselung deaktiviert
+          // const encryptedEntry = encryptData(entry);
+          // const addRequest = store.add({ datum: entry.datum, encryptedData: encryptedEntry });
+          const addRequest = store.add(entry);
+          
+          addRequest.onsuccess = () => {
+            addedCount++;
+          };
+          
+          addRequest.onerror = (event) => {
+            errors.push(`Fehler bei Kontextfaktor ${index}: ${event.target.error}`);
+          };
+        });
       };
       
-      transaction.onerror = () => {
-        reject(new Error('Fehler beim Speichern der Kontextfaktoren'));
+      clearRequest.onerror = (event) => {
+        reject(new Error(`Fehler beim Löschen alter Kontextfaktoren: ${event.target.error}`));
+      };
+      
+      transaction.oncomplete = async () => {
+        if (addedCount === normalizedData.length) {
+          console.log(`${addedCount} Kontextfaktoren erfolgreich gespeichert`);
+          resolve(true);
+        } else {
+          console.error('Nicht alle Kontextfaktoren konnten gespeichert werden:', errors);
+          
+          // Versuche Backup wiederherzustellen
+          try {
+            await restoreContextFactorsBackup(backupData);
+            reject(new Error(`Speichern fehlgeschlagen. Backup wiederhergestellt.`));
+          } catch (restoreError) {
+            reject(new Error(`Speichern und Backup-Wiederherstellung fehlgeschlagen`));
+          }
+        }
+      };
+      
+      transaction.onerror = async (event) => {
+        console.error('Transaktion fehlgeschlagen:', event.target.error);
+        
+        // Versuche Backup wiederherzustellen
+        try {
+          await restoreContextFactorsBackup(backupData);
+          reject(new Error(`Transaktion fehlgeschlagen. Backup wiederhergestellt.`));
+        } catch (restoreError) {
+          reject(new Error(`Transaktion und Backup-Wiederherstellung fehlgeschlagen`));
+        }
       };
     });
   } catch (error) {
     console.error('Fehler bei saveContextFactors:', error);
     
-    // Fallback auf localStorage
+    // Fallback auf localStorage mit Backup
     try {
-      localStorage.setItem('blutdruck_kontextfaktoren', JSON.stringify(contextFactors));
+      // Backup der alten Daten
+      const oldData = localStorage.getItem('blutdruck_kontextfaktoren');
+      localStorage.setItem('blutdruck_kontextfaktoren_backup', oldData || '{}');
+      
+      // Verschlüssele Kontextfaktoren für localStorage
+      const encryptedContextFactors = encryptData(contextFactors);
+      
+      // Neue Daten speichern
+      localStorage.setItem('blutdruck_kontextfaktoren', encryptedContextFactors);
       console.log('Kontextfaktoren in localStorage gespeichert (Fallback)');
+      
+      // Backup löschen nach erfolgreichem Speichern
+      localStorage.removeItem('blutdruck_kontextfaktoren_backup');
       return true;
     } catch (e) {
       console.error('Auch localStorage-Fallback fehlgeschlagen:', e);
+      
+      // Versuche Backup wiederherzustellen
+      try {
+        const backup = localStorage.getItem('blutdruck_kontextfaktoren_backup');
+        if (backup) {
+          localStorage.setItem('blutdruck_kontextfaktoren', backup);
+        }
+      } catch (restoreError) {
+        console.error('Backup-Wiederherstellung fehlgeschlagen:', restoreError);
+      }
+      
       return false;
     }
   }
+}
+
+/**
+ * Interne Funktion zum Laden von Kontextfaktoren mit bestehender DB-Verbindung
+ * @param {IDBDatabase} db Offene Datenbankverbindung
+ * @returns {Promise<Array>} Array aller Kontextfaktoren
+ */
+async function loadContextFactorsInternal(db) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.CONTEXT_FACTORS], 'readonly');
+    const store = transaction.objectStore(STORES.CONTEXT_FACTORS);
+    const request = store.getAll();
+    
+    request.onsuccess = () => {
+      resolve(request.result || []);
+    };
+    
+    request.onerror = () => {
+      reject(new Error('Fehler beim Laden der Kontextfaktoren für Backup'));
+    };
+  });
+}
+
+/**
+ * Stellt Kontextfaktoren aus Backup wieder her
+ * @param {Array} backupData Backup-Daten
+ * @returns {Promise<boolean>} Erfolg der Operation
+ */
+async function restoreContextFactorsBackup(backupData) {
+  if (!backupData || !Array.isArray(backupData) || backupData.length === 0) {
+    return true; // Nichts wiederherzustellen
+  }
+  
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.CONTEXT_FACTORS], 'readwrite');
+    const store = transaction.objectStore(STORES.CONTEXT_FACTORS);
+    
+    // Lösche aktuelle (fehlerhafte) Daten
+    store.clear();
+    
+    // Stelle Backup wieder her
+    backupData.forEach(entry => {
+      store.add(entry);
+    });
+    
+    transaction.oncomplete = () => {
+      console.log('Kontextfaktoren-Backup erfolgreich wiederhergestellt');
+      resolve(true);
+    };
+    
+    transaction.onerror = () => {
+      reject(new Error('Fehler beim Wiederherstellen des Kontextfaktoren-Backups'));
+    };
+  });
 }
 
 /**
@@ -359,6 +632,13 @@ export async function loadContextFactors() {
       
       request.onsuccess = () => {
         const normalizedData = request.result;
+        // TEMPORÄR: Entschlüsselung deaktiviert
+        // const decryptedData = normalizedData.map(item => {
+        //   if (item.encryptedData) {
+        //     return decryptData(item.encryptedData);
+        //   }
+        //   return item;
+        // });
         const contextFactors = denormalizeContextFactors(normalizedData);
         console.log(`${normalizedData.length} Kontextfaktoren erfolgreich geladen`);
         resolve(contextFactors);
@@ -374,9 +654,9 @@ export async function loadContextFactors() {
     // Fallback auf localStorage
     try {
       const storedData = localStorage.getItem('blutdruck_kontextfaktoren');
-      const parsedData = storedData ? JSON.parse(storedData) : {};
+      const decryptedData = storedData ? decryptData(storedData) : {};
       console.log('Kontextfaktoren aus localStorage geladen (Fallback)');
-      return parsedData;
+      return decryptedData || {};
     } catch (e) {
       console.error('Auch localStorage-Fallback fehlgeschlagen:', e);
       return {};

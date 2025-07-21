@@ -55,13 +55,29 @@ export const prepareDataWithAverages = (data) => {
 
 // Sichere Konvertierung von Zahlen mit Komma zu Punkt
 function safeParseFloat(value) {
+  // Umfassende Null/Undefined Checks
   if (value === undefined || value === null || value === '') {
-    return 0;
+    return null; // Null statt 0 für bessere Fehlerbehandlung
   }
   
   // Sicherstellen, dass der Wert ein String ist, bevor replace aufgerufen wird
   const strValue = String(value).trim();
-  return parseFloat(strValue.replace(',', '.')) || 0;
+  
+  // Leere Strings nach trim
+  if (strValue === '') {
+    return null;
+  }
+  
+  // Ersetze Komma mit Punkt für deutsche Zahlenformatierung
+  const normalizedValue = strValue.replace(',', '.');
+  const parsed = parseFloat(normalizedValue);
+  
+  // Prüfe auf gültige Zahl
+  if (isNaN(parsed) || !isFinite(parsed)) {
+    return null;
+  }
+  
+  return parsed;
 }
 
 // Extrahiert das Jahr aus einem Datumsstring (z.B. "15. Januar 2024" -> 2024)
@@ -237,13 +253,13 @@ export const parseCSVData = (text) => {
       
       // Blutdruckwerte extrahieren
       // Verwende direkt die ermittelten Spaltenindizes und prüfe Grenzen
-      let morgenSys = mSysIndex !== -1 && mSysIndex < values.length ? safeParseFloat(values[mSysIndex]) : 0;
-      let morgenDia = mDiaIndex !== -1 && mDiaIndex < values.length ? safeParseFloat(values[mDiaIndex]) : 0;
-      let morgenPuls = mPulseIndex !== -1 && mPulseIndex < values.length ? safeParseFloat(values[mPulseIndex]) : 0;
+      let morgenSys = mSysIndex !== -1 && mSysIndex < values.length ? (safeParseFloat(values[mSysIndex]) || 0) : 0;
+      let morgenDia = mDiaIndex !== -1 && mDiaIndex < values.length ? (safeParseFloat(values[mDiaIndex]) || 0) : 0;
+      let morgenPuls = mPulseIndex !== -1 && mPulseIndex < values.length ? (safeParseFloat(values[mPulseIndex]) || 0) : 0;
       
-      let abendSys = eSysIndex !== -1 && eSysIndex < values.length ? safeParseFloat(values[eSysIndex]) : 0;
-      let abendDia = eDiaIndex !== -1 && eDiaIndex < values.length ? safeParseFloat(values[eDiaIndex]) : 0;
-      let abendPuls = ePulseIndex !== -1 && ePulseIndex < values.length ? safeParseFloat(values[ePulseIndex]) : 0;
+      let abendSys = eSysIndex !== -1 && eSysIndex < values.length ? (safeParseFloat(values[eSysIndex]) || 0) : 0;
+      let abendDia = eDiaIndex !== -1 && eDiaIndex < values.length ? (safeParseFloat(values[eDiaIndex]) || 0) : 0;
+      let abendPuls = ePulseIndex !== -1 && ePulseIndex < values.length ? (safeParseFloat(values[ePulseIndex]) || 0) : 0;
       
       // Prüfen, ob mindestens ein gültiger Blutdruckwert vorhanden ist
       const hasMorningValues = morgenSys > 0 && morgenDia > 0;

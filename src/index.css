@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import dark mode styles */
+@import './styles/darkMode.css';
+
+/* Import modern design system */
+@import './styles/modernDesignSystem.css';
+
+/* Import advanced animations */
+@import './styles/advancedAnimations.css';
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

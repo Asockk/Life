@@ -1,5 +1,5 @@
 // src/components/Dashboard/BloodPressureSummary.js
-import React from 'react';
+import React, { memo } from 'react';
 import { Heart, Activity } from 'lucide-react';
 
 const BloodPressureSummary = ({ avgValues = {}, bpCategory = {}, minMaxValues = {}, darkMode = false }) => {
@@ -131,4 +131,17 @@ const BloodPressureSummary = ({ avgValues = {}, bpCategory = {}, minMaxValues = 
   );
 };
 
-export default BloodPressureSummary;
+// Memoize component to prevent unnecessary re-renders
+export default memo(BloodPressureSummary, (prevProps, nextProps) => {
+  return (
+    prevProps.avgValues?.sys === nextProps.avgValues?.sys &&
+    prevProps.avgValues?.dia === nextProps.avgValues?.dia &&
+    prevProps.avgValues?.puls === nextProps.avgValues?.puls &&
+    prevProps.bpCategory?.category === nextProps.bpCategory?.category &&
+    prevProps.minMaxValues?.sysMin === nextProps.minMaxValues?.sysMin &&
+    prevProps.minMaxValues?.sysMax === nextProps.minMaxValues?.sysMax &&
+    prevProps.minMaxValues?.diaMin === nextProps.minMaxValues?.diaMin &&
+    prevProps.minMaxValues?.diaMax === nextProps.minMaxValues?.diaMax &&
+    prevProps.darkMode === nextProps.darkMode
+  );
+});

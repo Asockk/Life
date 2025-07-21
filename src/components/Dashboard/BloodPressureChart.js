@@ -1,5 +1,5 @@
 // components/Dashboard/BloodPressureChart.js
-import React, { useCallback, useState, useMemo, useEffect } from 'react';
+import React, { useCallback, useState, useMemo, useEffect, memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
          ResponsiveContainer, ReferenceLine } from 'recharts';
 import { getBloodPressureCategory } from '../../utils/bloodPressureUtils';
@@ -9,7 +9,6 @@ const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => 
   // State for mobile optimizations
   const [isMobile, setIsMobile] = useState(false);
   const [expandLegend, setExpandLegend] = useState(false);
-  const [chartHeight, setChartHeight] = useState(300);
   
   // Which lines should be shown
   const [visibleLines, setVisibleLines] = useState({
@@ -30,8 +29,6 @@ const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => 
     const checkIfMobile = () => {
       const isMobileView = window.innerWidth < 768;
       setIsMobile(isMobileView);
-      // Adjust chart height based on screen size
-      setChartHeight(isMobileView ? 220 : 300);
     };
     
     // Initial Check
@@ -62,7 +59,7 @@ const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => 
   };
   
   // Parse a German date into a JavaScript Date object
-  const parseGermanDate = (dateStr) => {
+  const parseGermanDate = useCallback((dateStr) => {
     if (!dateStr) return null;
     
     // Extract year (if present)
@@ -102,10 +99,10 @@ const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => 
     }
     
     return null;
-  };
+  }, []);
   
   // Sort all data chronologically by date
-  const sortDataByDate = (dataArray) => {
+  const sortDataByDate = useCallback((dataArray) => {
     return [...dataArray].sort((a, b) => {
       const dateA = parseGermanDate(a.datum);
       const dateB = parseGermanDate(b.datum);
@@ -117,7 +114,7 @@ const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => 
       // Fallback if date objects cannot be created
       return 0;
     });
-  };
+  }, [parseGermanDate]);
 
   // Filter data based on selected time range
   const filteredData = useMemo(() => {
@@ -729,7 +726,7 @@ const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => 
             {visibleLines.references && (
               <>
                 <ReferenceLine 
-                  y={avgValues.sys} 
+                  y={avgValues?.sys || 0} 
                   stroke="#B10DC9" 
                   strokeWidth={1}
                   strokeDasharray={isMobile ? "2 2" : "3 3"}
@@ -742,7 +739,7 @@ const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => 
                   }} 
                 />
                 <ReferenceLine 
-                  y={avgValues.dia} 
+                  y={avgValues?.dia || 0} 
                   stroke="#7FDBFF" 
                   strokeWidth={1}
                   strokeDasharray={isMobile ? "2 2" : "3 3"}
@@ -763,4 +760,19 @@ const BloodPressureChart = ({ data, viewType, avgValues, darkMode = false }) => 
   );
 };
 
-export default BloodPressureChart;
+// Memoize component to prevent unnecessary re-renders
+export default memo(BloodPressureChart, (prevProps, nextProps) => {
+  // Deep comparison for data array would be expensive, so we compare length and first/last items
+  const prevData = prevProps.data || [];
+  const nextData = nextProps.data || [];
+  
+  return (
+    prevData.length === nextData.length &&
+    prevData[0]?.id === nextData[0]?.id &&
+    prevData[prevData.length - 1]?.id === nextData[nextData.length - 1]?.id &&
+    prevProps.viewType === nextProps.viewType &&
+    prevProps.avgValues?.sys === nextProps.avgValues?.sys &&
+    prevProps.avgValues?.dia === nextProps.avgValues?.dia &&
+    prevProps.darkMode === nextProps.darkMode
+  );
+});

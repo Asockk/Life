@@ -1,7 +1,8 @@
 // components/Forms/EntryFormWithContext.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { X, Check, Calendar, Heart, Moon, Activity, Utensils, Coffee, Wine, ChevronDown, ChevronUp } from 'lucide-react';
 import { validateBloodPressure, validateForm, getWeekdayFromDate } from '../../utils/validationUtils';
+import './EntryFormWithContext.css';
 
 // Helper function for date conversion
 const parseDate = (dateStr) => {
@@ -130,11 +131,24 @@ const EntryFormWithContext = ({
     if (e) e.preventDefault();
     
     // Validate form
-    const errors = validateForm(formData, validateBloodPressure);
-    setFormErrors(errors);
+    const validation = validateForm(formData);
+    
+    // Convert validation errors array to object format for form errors
+    const errorObj = {};
+    if (!validation.isValid) {
+      validation.errors.forEach((error, index) => {
+        errorObj[`error_${index}`] = error;
+      });
+    }
+    
+    // Also validate blood pressure specific errors
+    const bpErrors = validateBloodPressure(formData);
+    Object.assign(errorObj, bpErrors);
+    
+    setFormErrors(errorObj);
     
     // If no errors, submit the form (with context factors)
-    if (Object.keys(errors).length === 0) {
+    if (validation.isValid && Object.keys(bpErrors).length === 0) {
       // Send context factors as they are - empty ones have already been removed
       // by the toggle behavior of updateFactor
       const result = onSubmit(
@@ -143,7 +157,7 @@ const EntryFormWithContext = ({
         Object.keys(contextFactors).length > 0 ? contextFactors : null
       );
       
-      if (!result.success && !result.duplicate) {
+      if (result && !result.success && !result.duplicate) {
         setFormErrors(result.errors || {});
       }
     }
@@ -246,153 +260,115 @@ const EntryFormWithContext = ({
   ];
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div 
-        className={`w-full h-full sm:h-auto sm:max-h-[90vh] sm:w-auto sm:max-w-md sm:rounded-xl shadow-xl flex flex-col overflow-hidden ${
-          darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-        }`}
-      >
-        {/* Form header with close button only */}
-        <div className={`sticky top-0 flex justify-end items-center px-4 py-3 z-10 ${
-          darkMode ? 'bg-gray-800' : 'bg-white'
-        }`}>
+    <div className="ios-modal-backdrop">
+      <div className="ios-modal ios-modal-fullscreen">
+        {/* iOS Style Navigation Bar */}
+        <div className="ios-modal-header">
           <button 
             onClick={onCancel}
-            className={`p-2 rounded-full hover:bg-opacity-10 hover:bg-gray-500 ${
-              darkMode ? 'text-gray-300' : 'text-gray-500'
-            }`}
-            aria-label="Schließen"
+            className="ios-modal-action text-[var(--ios-blue)]"
           >
-            <X size={24} />
+            Abbrechen
+          </button>
+          <h2 className="ios-modal-title">
+            {isEdit ? 'Eintrag bearbeiten' : 'Neue Messung'}
+          </h2>
+          <button
+            onClick={handleSubmit}
+            className="ios-modal-action text-[var(--ios-blue)] font-semibold"
+          >
+            {isEdit ? 'Fertig' : 'Sichern'}
           </button>
         </div>
         
-        {/* Tab navigation */}
-        <div className={`flex ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <button
-            type="button"
-            className={`flex-1 py-4 text-center font-medium ${
-              activeSection === 'measurements'
-                ? darkMode 
-                  ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700'
-                  : 'text-blue-600 border-b-2 border-blue-500 bg-gray-50'
-                : darkMode
-                  ? 'text-gray-400 hover:text-gray-300 border-b border-gray-700'
-                  : 'text-gray-500 hover:text-gray-700 border-b border-gray-200'
-            }`}
-            onClick={() => setActiveSection('measurements')}
-          >
-            Messungen
-          </button>
-          <button
-            type="button"
-            className={`flex-1 py-4 text-center font-medium ${
-              activeSection === 'context'
-                ? darkMode 
-                  ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700'
-                  : 'text-blue-600 border-b-2 border-blue-500 bg-gray-50'
-                : darkMode
-                  ? 'text-gray-400 hover:text-gray-300 border-b border-gray-700'
-                  : 'text-gray-500 hover:text-gray-700 border-b border-gray-200'
-            }`}
-            onClick={() => setActiveSection('context')}
-          >
-            Faktoren
-          </button>
+        {/* iOS Style Segmented Control */}
+        <div className="px-4 py-3">
+          <div className="ios-segmented-control">
+            <button
+              type="button"
+              className={`ios-segmented-item ${activeSection === 'measurements' ? 'active' : ''}`}
+              onClick={() => setActiveSection('measurements')}
+            >
+              Messungen
+            </button>
+            <button
+              type="button"
+              className={`ios-segmented-item ${activeSection === 'context' ? 'active' : ''}`}
+              onClick={() => setActiveSection('context')}
+            >
+              Faktoren
+            </button>
+          </div>
         </div>
         
         {/* Form content - scrollable */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-[var(--ios-bg-secondary)]">
           {activeSection === 'measurements' ? (
             /* MEASUREMENTS SECTION */
-            <form className="p-4 pt-2" onSubmit={handleSubmit}>
-              <div className="grid grid-cols-2 gap-3 mb-5">
-                {/* Datum input - Optimized for mobile */}
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
-                    Datum
-                  </label>
-                  <div className="relative">
-                    <div className={`absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none ${
-                      darkMode ? 'text-gray-500' : 'text-gray-500'
-                    }`}>
-                      <Calendar size={18} />
+            <form className="p-4" onSubmit={handleSubmit}>
+              {/* Display general form errors */}
+              {Object.keys(formErrors).filter(key => key.startsWith('error_')).length > 0 && (
+                <div className="ios-card mb-4" style={{ backgroundColor: 'rgba(255, 59, 48, 0.1)' }}>
+                  {Object.entries(formErrors)
+                    .filter(([key]) => key.startsWith('error_'))
+                    .map(([key, error]) => (
+                      <p key={key} className="text-sm" style={{ color: 'var(--ios-red)' }}>{error}</p>
+                    ))
+                  }
+                </div>
+              )}
+              {/* Date and Day Selection */}
+              <div className="ios-card mb-4">
+                <div className="ios-list-item">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                      <Calendar size={20} className="mr-3" style={{ color: 'var(--ios-blue)' }} />
+                      <span>Datum</span>
                     </div>
                     <input 
                       type="date"
                       name="datum"
                       value={formData.datum}
                       onChange={handleInputChange}
-                      className={`w-full p-3 pl-9 rounded-lg text-base ${
-                        formErrors.datum 
-                          ? darkMode 
-                            ? 'border-red-500 bg-gray-700' 
-                            : 'border-red-500 bg-white'
-                          : darkMode
-                            ? 'border-gray-600 bg-gray-700 text-white'
-                            : 'border border-gray-300 bg-white'
-                      }`}
+                      className="ios-input-inline"
                       required
                     />
                   </div>
-                  {formErrors.datum && (
-                    <p className="mt-1 text-xs text-red-500">{formErrors.datum}</p>
-                  )}
                 </div>
-
-                {/* Wochentag select - Easier mobile selection */}
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${
-                    darkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
-                    Wochentag
-                  </label>
-                  <select 
-                    name="tag"
-                    value={formData.tag}
-                    onChange={handleInputChange}
-                    className={`w-full p-3 rounded-lg text-base appearance-none ${
-                      formErrors.tag 
-                        ? darkMode 
-                          ? 'border-red-500 bg-gray-700' 
-                          : 'border-red-500 bg-white'
-                        : darkMode
-                          ? 'border-gray-600 bg-gray-700 text-white'
-                          : 'border border-gray-300 bg-white'
-                    }`}
-                    required
-                  >
-                    <option value="">Wählen...</option>
-                    <option value="Mo">Montag</option>
-                    <option value="Di">Dienstag</option>
-                    <option value="Mi">Mittwoch</option>
-                    <option value="Do">Donnerstag</option>
-                    <option value="Fr">Freitag</option>
-                    <option value="Sa">Samstag</option>
-                    <option value="So">Sonntag</option>
-                  </select>
-                  {formErrors.tag && (
-                    <p className="mt-1 text-xs text-red-500">{formErrors.tag}</p>
-                  )}
+                <div className="ios-list-divider" />
+                <div className="ios-list-item">
+                  <div className="flex items-center justify-between w-full">
+                    <span>Wochentag</span>
+                    <select 
+                      name="tag"
+                      value={formData.tag}
+                      onChange={handleInputChange}
+                      className="ios-select-inline"
+                      required
+                    >
+                      <option value="">Wählen...</option>
+                      <option value="Mo">Montag</option>
+                      <option value="Di">Dienstag</option>
+                      <option value="Mi">Mittwoch</option>
+                      <option value="Do">Donnerstag</option>
+                      <option value="Fr">Freitag</option>
+                      <option value="Sa">Samstag</option>
+                      <option value="So">Sonntag</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* Morgen-Messung - Card style for better grouping */}
-              <div className={`p-4 mb-4 rounded-lg ${
-                darkMode ? 'bg-gray-700' : 'bg-gray-50'
-              }`}>
-                <h4 className={`font-medium mb-3 text-center ${
-                  darkMode ? 'text-gray-200' : 'text-gray-700'
-                }`}>Morgen-Messung</h4>
+              {/* Morgen-Messung - iOS Card style */}
+              <div className="ios-card mb-4">
+                <h4 className="text-center font-semibold mb-4" style={{ color: 'var(--ios-text-primary)' }}>
+                  Morgen-Messung
+                </h4>
                 
                 <div className="grid grid-cols-3 gap-3">
                   {/* Systolic */}
                   <div>
-                    <label className={`block text-center text-xs mb-1 ${
-                      darkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
+                    <label className="block text-center text-xs mb-1" style={{ color: 'var(--ios-text-secondary)' }}>
                       Systolisch
                     </label>
                     <input 
@@ -403,15 +379,7 @@ const EntryFormWithContext = ({
                       name="morgenSys"
                       value={formData.morgenSys}
                       onChange={handleInputChange}
-                      className={`w-full p-3 rounded-lg text-center text-lg font-semibold ${
-                        formErrors.morgenSys 
-                          ? darkMode 
-                            ? 'border-red-500 bg-gray-600' 
-                            : 'border-red-500 bg-white'
-                          : darkMode
-                            ? 'border-gray-600 bg-gray-600'
-                            : 'border border-gray-300 bg-white'
-                      }`}
+                      className={`ios-input-number ${formErrors.morgenSys ? 'error' : ''}`}
                       placeholder="120"
                     />
                     {formErrors.morgenSys && (
@@ -421,9 +389,7 @@ const EntryFormWithContext = ({
                   
                   {/* Diastolic */}
                   <div>
-                    <label className={`block text-center text-xs mb-1 ${
-                      darkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
+                    <label className="block text-center text-xs mb-1" style={{ color: 'var(--ios-text-secondary)' }}>
                       Diastolisch
                     </label>
                     <input 
@@ -434,15 +400,7 @@ const EntryFormWithContext = ({
                       name="morgenDia"
                       value={formData.morgenDia}
                       onChange={handleInputChange}
-                      className={`w-full p-3 rounded-lg text-center text-lg font-semibold ${
-                        formErrors.morgenDia 
-                          ? darkMode 
-                            ? 'border-red-500 bg-gray-600' 
-                            : 'border-red-500 bg-white'
-                          : darkMode
-                            ? 'border-gray-600 bg-gray-600'
-                            : 'border border-gray-300 bg-white'
-                      }`}
+                      className={`ios-input-number ${formErrors.morgenDia ? 'error' : ''}`}
                       placeholder="80"
                     />
                     {formErrors.morgenDia && (
@@ -452,9 +410,7 @@ const EntryFormWithContext = ({
                   
                   {/* Pulse */}
                   <div>
-                    <label className={`block text-center text-xs mb-1 ${
-                      darkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
+                    <label className="block text-center text-xs mb-1" style={{ color: 'var(--ios-text-secondary)' }}>
                       Puls
                     </label>
                     <input 
@@ -465,15 +421,7 @@ const EntryFormWithContext = ({
                       name="morgenPuls"
                       value={formData.morgenPuls}
                       onChange={handleInputChange}
-                      className={`w-full p-3 rounded-lg text-center text-lg font-semibold ${
-                        formErrors.morgenPuls 
-                          ? darkMode 
-                            ? 'border-red-500 bg-gray-600' 
-                            : 'border-red-500 bg-white'
-                          : darkMode
-                            ? 'border-gray-600 bg-gray-600'
-                            : 'border border-gray-300 bg-white'
-                      }`}
+                      className={`ios-input-number ${formErrors.morgenPuls ? 'error' : ''}`}
                       placeholder="70"
                     />
                     {formErrors.morgenPuls && (
@@ -483,20 +431,16 @@ const EntryFormWithContext = ({
                 </div>
               </div>
               
-              {/* Abend-Messung - Card style for better grouping */}
-              <div className={`p-4 mb-4 rounded-lg ${
-                darkMode ? 'bg-gray-700' : 'bg-gray-50'
-              }`}>
-                <h4 className={`font-medium mb-3 text-center ${
-                  darkMode ? 'text-gray-200' : 'text-gray-700'
-                }`}>Abend-Messung</h4>
+              {/* Abend-Messung - iOS Card style */}
+              <div className="ios-card mb-4">
+                <h4 className="text-center font-semibold mb-4" style={{ color: 'var(--ios-text-primary)' }}>
+                  Abend-Messung
+                </h4>
                 
                 <div className="grid grid-cols-3 gap-3">
                   {/* Systolic */}
                   <div>
-                    <label className={`block text-center text-xs mb-1 ${
-                      darkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
+                    <label className="block text-center text-xs mb-1" style={{ color: 'var(--ios-text-secondary)' }}>
                       Systolisch
                     </label>
                     <input 
@@ -507,15 +451,7 @@ const EntryFormWithContext = ({
                       name="abendSys"
                       value={formData.abendSys}
                       onChange={handleInputChange}
-                      className={`w-full p-3 rounded-lg text-center text-lg font-semibold ${
-                        formErrors.abendSys 
-                          ? darkMode 
-                            ? 'border-red-500 bg-gray-600' 
-                            : 'border-red-500 bg-white'
-                          : darkMode
-                            ? 'border-gray-600 bg-gray-600'
-                            : 'border border-gray-300 bg-white'
-                      }`}
+                      className={`ios-input-number ${formErrors.abendSys ? 'error' : ''}`}
                       placeholder="120"
                     />
                     {formErrors.abendSys && (
@@ -525,9 +461,7 @@ const EntryFormWithContext = ({
                   
                   {/* Diastolic */}
                   <div>
-                    <label className={`block text-center text-xs mb-1 ${
-                      darkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
+                    <label className="block text-center text-xs mb-1" style={{ color: 'var(--ios-text-secondary)' }}>
                       Diastolisch
                     </label>
                     <input 
@@ -538,15 +472,7 @@ const EntryFormWithContext = ({
                       name="abendDia"
                       value={formData.abendDia}
                       onChange={handleInputChange}
-                      className={`w-full p-3 rounded-lg text-center text-lg font-semibold ${
-                        formErrors.abendDia 
-                          ? darkMode 
-                            ? 'border-red-500 bg-gray-600' 
-                            : 'border-red-500 bg-white'
-                          : darkMode
-                            ? 'border-gray-600 bg-gray-600'
-                            : 'border border-gray-300 bg-white'
-                      }`}
+                      className={`ios-input-number ${formErrors.abendDia ? 'error' : ''}`}
                       placeholder="80"
                     />
                     {formErrors.abendDia && (
@@ -556,9 +482,7 @@ const EntryFormWithContext = ({
                   
                   {/* Pulse */}
                   <div>
-                    <label className={`block text-center text-xs mb-1 ${
-                      darkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
+                    <label className="block text-center text-xs mb-1" style={{ color: 'var(--ios-text-secondary)' }}>
                       Puls
                     </label>
                     <input 
@@ -569,15 +493,7 @@ const EntryFormWithContext = ({
                       name="abendPuls"
                       value={formData.abendPuls}
                       onChange={handleInputChange}
-                      className={`w-full p-3 rounded-lg text-center text-lg font-semibold ${
-                        formErrors.abendPuls 
-                          ? darkMode 
-                            ? 'border-red-500 bg-gray-600' 
-                            : 'border-red-500 bg-white'
-                          : darkMode
-                            ? 'border-gray-600 bg-gray-600'
-                            : 'border border-gray-300 bg-white'
-                      }`}
+                      className={`ios-input-number ${formErrors.abendPuls ? 'error' : ''}`}
                       placeholder="70"
                     />
                     {formErrors.abendPuls && (
@@ -588,139 +504,112 @@ const EntryFormWithContext = ({
               </div>
             </form>
           ) : (
-            /* CONTEXT FACTORS SECTION - Compact grid layout */
-            <div className="p-3">
-              {/* Short instruction text */}
-              <p className={`text-xs mb-3 ${
-                darkMode ? 'text-gray-300' : 'text-gray-600'
-              }`}>
-                Diese Faktoren können Ihren Blutdruck beeinflussen:
-              </p>
-              
-              {/* Grid of factor cards - showing all at once */}
-              <div className="grid grid-cols-2 gap-2">
-                {factorComponents.map((factor) => (
-                  <div 
-                    key={factor.name} 
-                    className={`p-2 rounded-lg ${
-                      darkMode ? 'bg-gray-700' : 'bg-gray-50'
-                    } ${
-                      contextFactors[factor.name] !== undefined
-                        ? darkMode
-                          ? 'border-l-4 border-indigo-500'
-                          : 'border-l-4 border-indigo-500'
-                        : ''
-                    }`}
-                  >
-                    {/* Factor header */}
-                    <div className="flex items-center mb-1.5">
-                      <span className={`flex-shrink-0 mr-2 ${
-                        darkMode ? 'text-indigo-400' : 'text-indigo-500'
-                      }`}>
-                        {factor.icon}
-                      </span>
-                      <span className={`text-sm font-medium ${
-                        contextFactors[factor.name] !== undefined
-                          ? darkMode ? 'text-white' : 'text-gray-800'
-                          : darkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        {factor.label}
-                      </span>
+            /* CONTEXT FACTORS SECTION - Minimalist slider approach */
+            <div className="p-3 h-full flex flex-col">
+              {/* Compact list with sliders */}
+              <div className="flex-1 space-y-3">
+                {factorComponents.map((factor) => {
+                  const factorColors = {
+                    stress: 'var(--ios-red)',
+                    sleep: 'var(--ios-purple)', 
+                    activity: 'var(--ios-green)',
+                    salt: 'var(--ios-orange)',
+                    caffeine: 'var(--ios-pink)',
+                    alcohol: 'var(--ios-blue)'
+                  };
+                  
+                  const currentValue = contextFactors[factor.name];
+                  const hasValue = currentValue !== undefined;
+                  
+                  return (
+                    <div key={factor.name} className={`ios-factor-row ${hasValue ? 'active' : ''}`}>
+                      {/* Icon and Label Row */}
+                      <div className="flex items-center mb-2">
+                        <span className="mr-2" style={{ color: hasValue ? factorColors[factor.name] : 'var(--ios-text-tertiary)' }}>
+                          {React.cloneElement(factor.icon, { size: 18 })}
+                        </span>
+                        <span className="text-sm font-medium flex-1" style={{ 
+                          color: hasValue ? 'var(--ios-text-primary)' : 'var(--ios-text-secondary)' 
+                        }}>
+                          {factor.label}
+                        </span>
+                        {hasValue && (
+                          <span className="text-xs font-medium" style={{ color: factorColors[factor.name] }}>
+                            {factor.options[currentValue]?.label}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* iOS-style slider track */}
+                      <div className="ios-factor-slider">
+                        <div className="ios-slider-track">
+                          {factor.options.map((option, index) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => updateFactor(factor.name, option.value)}
+                              className={`ios-slider-stop ${currentValue === option.value ? 'active' : ''}`}
+                              style={{
+                                left: `${(index / (factor.options.length - 1)) * 100}%`,
+                                backgroundColor: currentValue === option.value ? factorColors[factor.name] : 'var(--ios-separator)'
+                              }}
+                            >
+                              <span className="ios-slider-label">
+                                {option.label.charAt(0)}
+                              </span>
+                            </button>
+                          ))}
+                          {hasValue && (
+                            <div 
+                              className="ios-slider-fill" 
+                              style={{
+                                width: `${(currentValue / (factor.options.length - 1)) * 100}%`,
+                                backgroundColor: factorColors[factor.name]
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    
-                    {/* Options buttons */}
-                    <div className="grid grid-cols-3 gap-1">
-                      {factor.options.map((option) => (
-                        <button
-                          type="button"
-                          key={option.value}
-                          onClick={() => updateFactor(factor.name, option.value)}
-                          className={`py-2 rounded text-center text-xs truncate ${
-                            contextFactors[factor.name] === option.value
-                              ? darkMode
-                                ? 'bg-indigo-600 text-white font-medium shadow-inner'
-                                : 'bg-indigo-500 text-white font-medium shadow-inner'
-                              : darkMode
-                                ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
-              {/* Selected factors summary */}
-              <div className={`mt-3 p-2 rounded-lg ${
-                darkMode ? 'bg-gray-700' : 'bg-gray-100'
-              }`}>
-                <div className="text-xs font-medium mb-1">Ausgewählt:</div>
-                {Object.keys(contextFactors).length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(contextFactors).map(([factor, value]) => {
-                      const factorInfo = factorComponents.find(f => f.name === factor);
-                      const option = factorInfo?.options.find(o => o.value === value);
+              {/* Ultra minimal summary */}
+              {Object.keys(contextFactors).length > 0 && (
+                <div className="flex items-center justify-between pt-3 mt-3 border-t" style={{ borderColor: 'var(--ios-separator)' }}>
+                  <div className="flex items-center gap-2">
+                    {Object.keys(contextFactors).map((key, index) => {
+                      const factor = factorComponents.find(f => f.name === key);
+                      const color = {
+                        stress: 'var(--ios-red)',
+                        sleep: 'var(--ios-purple)', 
+                        activity: 'var(--ios-green)',
+                        salt: 'var(--ios-orange)',
+                        caffeine: 'var(--ios-pink)',
+                        alcohol: 'var(--ios-blue)'
+                      }[key];
                       
                       return (
-                        <div 
-                          key={factor} 
-                          className={`px-2 py-1 text-xs rounded-full flex items-center ${
-                            darkMode ? 'bg-indigo-700 text-white' : 'bg-indigo-100 text-indigo-800'
-                          }`}
-                          onClick={() => clearFactor(factor)}
-                        >
-                          {factorInfo?.label}: {option?.label}
-                          <X size={14} className="ml-1 cursor-pointer" />
-                        </div>
+                        <span key={key} style={{ color, fontSize: '10px' }}>
+                          {React.cloneElement(factor.icon, { size: 12 })}
+                        </span>
                       );
                     })}
                   </div>
-                ) : (
-                  <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Keine Faktoren ausgewählt
-                  </div>
-                )}
-              </div>
+                  <button
+                    onClick={() => setContextFactors({})}
+                    className="text-xs" 
+                    style={{ color: 'var(--ios-text-tertiary)' }}
+                  >
+                    Alle löschen
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
         
-        {/* Form footer with actions - fixed at bottom */}
-        <div className={`p-3 ${
-          darkMode 
-            ? 'bg-gray-800'
-            : 'bg-white'
-        }`}>
-          <div className="grid grid-cols-1 gap-2">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className={`w-full py-3 px-4 rounded-lg text-base font-medium flex items-center justify-center ${
-                darkMode
-                  ? 'bg-blue-600 text-white hover:bg-blue-500'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              <Check size={20} className="mr-2" />
-              {isEdit ? 'Aktualisieren' : 'Speichern'}
-            </button>
-            
-            <button
-              type="button"
-              onClick={onCancel}
-              className={`w-full py-3 px-4 rounded-lg text-base font-medium ${
-                darkMode
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Abbrechen
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

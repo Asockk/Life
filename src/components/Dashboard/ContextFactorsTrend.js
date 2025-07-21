@@ -2,20 +2,32 @@
 import React, { useState } from 'react';
 import { Heart, Coffee, Utensils, Moon, Activity, Wine, ArrowUp, ArrowDown, Minus, Calendar, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 
-const ContextFactorsTrend = ({ contextData, darkMode = false }) => {
+const ContextFactorsTrend = ({ contextFactors, contextData, darkMode = false }) => {
   // State für Details anzeigen/ausblenden
   const [showDetails, setShowDetails] = useState(false);
   const [dateFilter, setDateFilter] = useState('all');
   const [showFilterOptions, setShowFilterOptions] = useState(false);
 
+  // Verwende contextFactors falls vorhanden, sonst contextData (für Abwärtskompatibilität)
+  const factorsData = contextFactors || contextData || {};
+
+  // Sicherheitscheck für leere Daten
+  if (!factorsData || typeof factorsData !== 'object' || Object.keys(factorsData).length === 0) {
+    return (
+      <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
+        <p className="text-center">Keine Kontextfaktoren-Daten verfügbar</p>
+      </div>
+    );
+  }
+
   // Bestimme den aktuellsten Tag mit Daten
-  const latestDay = Object.keys(contextData).sort().reverse()[0];
-  const latestContextData = latestDay ? contextData[latestDay] : null;
+  const latestDay = Object.keys(factorsData).sort().reverse()[0];
+  const latestContextData = latestDay ? factorsData[latestDay] : null;
   
   if (!latestContextData) return null;
 
   // Daten für den Zeitraum-Filter
-  const dates = Object.keys(contextData).sort();
+  const dates = Object.keys(factorsData).sort();
   const firstDay = dates.length > 0 ? dates[0] : null;
   const lastDay = dates.length > 0 ? dates[dates.length - 1] : null;
   
@@ -67,10 +79,10 @@ const ContextFactorsTrend = ({ contextData, darkMode = false }) => {
       factorValues[factor] = latestContextData[factor];
       
       // Trend berechnen (vereinfacht - nur letzter Tag vs. vorletzter Tag)
-      const sortedDates = Object.keys(contextData).sort();
+      const sortedDates = Object.keys(factorsData).sort();
       if (sortedDates.length >= 2) {
         const previousDay = sortedDates[sortedDates.length - 2];
-        const previousValue = contextData[previousDay][factor];
+        const previousValue = factorsData[previousDay][factor];
         
         if (previousValue !== undefined) {
           if (factorValues[factor] > previousValue) {
