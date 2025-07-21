@@ -259,12 +259,8 @@ export async function saveMeasurements(data) {
         return { ...measurement, _standardDate: standardDate };
       });
       
-      // Neue Daten speichern (mit Verschlüsselung wenn aktiviert)
-      if (encryptedStorage.isEncryptionEnabled()) {
-        await encryptedStorage.saveEncrypted('blutdruck_messungen', dataToSave);
-      } else {
-        localStorage.setItem('blutdruck_messungen', JSON.stringify(dataToSave));
-      }
+      // Neue Daten speichern (ohne Verschlüsselung)
+      localStorage.setItem('blutdruck_messungen', JSON.stringify(dataToSave));
       console.log('Messungen in localStorage gespeichert (Fallback)');
       
       // Backup löschen nach erfolgreichem Speichern

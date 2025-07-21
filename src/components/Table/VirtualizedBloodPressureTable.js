@@ -64,7 +64,6 @@ const VirtualizedBloodPressureTable = ({ data, onEdit, onDelete, darkMode = true
     
     // Virtual scrolling - show all data
     setCurrentData(sortedData);
-    setTotalPages(Math.ceil(sortedData.length / ITEMS_PER_PAGE));
     
     // Reset to page 1 if current page is out of bounds
     if (currentPage > Math.ceil(sortedData.length / ITEMS_PER_PAGE)) {

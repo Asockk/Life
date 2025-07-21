@@ -23,7 +23,8 @@
       "Bash(npm update)",
       "Bash(npm info:*)",
       "Bash(npm audit:*)",
-      "Bash(npx gh-pages:*)"
+      "Bash(npx gh-pages:*)",
+      "Bash(npx kill-port:*)"
     ]
   },
   "enableAllProjectMcpServers": false

@@ -3,7 +3,7 @@ import React, { useState, useRef, memo } from 'react';
 import { 
   AreaChart, Area, LineChart, Line, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, 
-  ReferenceLine, ComposedChart
+  ReferenceLine, ComposedChart, Bar
 } from 'recharts';
 import { Calendar, Eye, Zap, ChevronRight, Heart } from 'lucide-react';
 
