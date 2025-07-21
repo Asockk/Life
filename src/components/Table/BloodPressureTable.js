@@ -64,11 +64,13 @@ const BloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
   const getSortedData = (dataArray, isDescending) => {
     
     return [...dataArray].sort((a, b) => {
-      // Deutsche Monatsnamen in numerische Werte
+      // Deutsche Monatsnamen in numerische Werte - mit Varianten für März
       const months = {
         'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
         'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
-        'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
+        'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11,
+        // Alternative Schreibweisen
+        'Marz': 2, 'Maerz': 2
       };
       
       // Datumsstring in Date-Objekt

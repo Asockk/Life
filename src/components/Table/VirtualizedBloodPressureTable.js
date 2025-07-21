@@ -35,6 +35,53 @@ const VirtualizedBloodPressureTable = ({ data, onEdit, onDelete, darkMode = true
   
   // Data preprocessing with memoization
   useEffect(() => {
+    // Deutsche Monatsnamen in numerische Werte - mit Varianten für März
+    const months = {
+      'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
+      'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
+      'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11,
+      // Alternative Schreibweisen
+      'Marz': 2, 'Maerz': 2
+    };
+    
+    // Datumsstring in Date-Objekt
+    const parseDate = (str) => {
+      if (!str) return new Date(0);
+      
+      let day, month, year;
+      
+      // Extrahiere Jahr aus dem String
+      const yearMatch = str.match(/\b(20\d{2})\b/);
+      year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+      
+      // Format: "21. November 2024" oder "1. Januar 2023"
+      if (str.includes('.')) {
+        const parts = str.split('. ');
+        day = parseInt(parts[0]);
+        
+        if (parts.length > 1) {
+          // Extrahiere Monat (kann "November 2024" oder nur "November" sein)
+          const monthAndYear = parts[1].trim();
+          const monthName = monthAndYear.split(' ')[0].trim();
+          month = monthName;
+        }
+      } 
+      // Format: "Januar 1 2023"
+      else if (str.includes(' ')) {
+        const parts = str.split(' ');
+        month = parts[0];
+        day = parseInt(parts[1]);
+      } else {
+        return new Date(0);
+      }
+      
+      if (months[month] === undefined) {
+        return new Date(0);
+      }
+      
+      return new Date(year, months[month], day);
+    };
+    
     // Add derived fields with unique row identifiers
     const processedData = data.map((item, index) => ({
       ...item,
@@ -48,18 +95,12 @@ const VirtualizedBloodPressureTable = ({ data, onEdit, onDelete, darkMode = true
         : null
     }));
     
-    // Sort with stable sorting using uniqueSortId
+    // Sort with stable sorting using parsed dates
     const sortedData = [...processedData].sort((a, b) => {
-      const dateA = a._standardDate || a.datum;
-      const dateB = b._standardDate || b.datum;
+      const dateA = parseDate(a.datum);
+      const dateB = parseDate(b.datum);
       
-      if (dateA === dateB) {
-        return a.uniqueSortId.localeCompare(b.uniqueSortId);
-      }
-      
-      return sortDescending 
-        ? dateB.localeCompare(dateA)
-        : dateA.localeCompare(dateB);
+      return sortDescending ? dateB - dateA : dateA - dateB;
     });
     
     // Virtual scrolling - show all data

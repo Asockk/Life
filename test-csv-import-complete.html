@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Import Test mit echten Daten</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f0f0f0;
+            font-weight: bold;
+        }
+        .highlight {
+            background: #ffffe0;
+        }
+        .no-year {
+            background: #ffcccc;
+        }
+        .filter-controls {
+            margin: 10px 0;
+        }
+        button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CSV Import Test mit echten Daten</h1>
+        
+        <div class="test-section">
+            <h2>1. CSV Daten einlesen</h2>
+            <button onclick="loadCSVData()">CSV Daten laden</button>
+            <div id="loadResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Parse-Test</h2>
+            <button onclick="testParsing()">Parse-Funktion testen</button>
+            <div id="parseResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Datum Konvertierung</h2>
+            <button onclick="testDateConversion()">Datum-Konvertierung testen</button>
+            <div id="dateResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Sortierung</h2>
+            <div class="filter-controls">
+                <button onclick="sortData('asc')">Aufsteigend sortieren</button>
+                <button onclick="sortData('desc')">Absteigend sortieren</button>
+            </div>
+            <div id="sortResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Filterung</h2>
+            <div class="filter-controls">
+                <button onclick="filterByYear(2024)">Nur 2024</button>
+                <button onclick="filterByYear(2025)">Nur 2025</button>
+                <button onclick="filterByMonth('Januar')">Nur Januar</button>
+                <button onclick="filterByMonth('Juli')">Nur Juli</button>
+                <button onclick="showAll()">Alle anzeigen</button>
+            </div>
+            <div id="filterResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>6. Probleme</h2>
+            <button onclick="findProblems()">Probleme finden</button>
+            <div id="problemResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>7. Vollständige Tabelle</h2>
+            <div id="fullTable"></div>
+        </div>
+    </div>
+
+    <script>
+        // Echte CSV Daten aus der Datei
+        const csvContent = `Tag;Datum;Blutdruck Morgen;;;Blutdruck Abend;;;Kontextfaktoren;;;;;
+;;Sys;Dia;Puls;Sys;Dia;Puls;Stress;Schlaf;Aktivität;Salz;Koffein;Alkohol
+Donnerstag;21. November 2024;138;82;65;142;79;74;1;1;1;1;1;0
+Freitag;22. November 2024;150;77;75;180;88;79;1;1;1;1;1;0
+Samstag;23. November 2024;141;94;89;175;90;78;1;1;1;1;1;0
+Sonntag;24. November 2024;172;89;81;147;85;83;1;1;1;1;1;0
+Montag;25. November 2024;154;81;69;152;90;75;1;1;1;1;1;0
+Dienstag;26. November 2024;141;77;73;169;89;64;1;1;0;0;0;0
+Mittwoch;27. November 2024;145;78;66;158;86;78;1;1;0;0;0;0
+Donnerstag;28. November 2024;140;89;69;144;85;81;1;1;0;0;0;0
+Freitag;29. November 2024;146;78;57;143;81;67;1;1;0;0;0;0
+Samstag;30. November 2024;148;81;56;128;78;57;1;1;0;0;0;0
+Sonntag;1. Dezember 2024;137;75;55;143;84;54;1;1;0;0;0;0
+Montag;2. Dezember 2024;134;74;53;160;89;62;1;1;0;0;0;0
+Dienstag;3. Dezember 2024;153;83;71;148;86;69;1;1;0;0;0;0
+Mittwoch;4. Dezember 2024;151;77;62;150;81;70;1;1;0;0;0;0
+Donnerstag;5. Dezember 2024;144;74;64;158;71;59;1;1;0;0;0;0
+Freitag;6. Dezember 2024;138;79;63;138;75;48;1;1;0;0;0;0
+Samstag;7. Dezember 2024;141;73;56;142;73;73;1;1;0;0;0;0
+Sonntag;8. Dezember 2024;140;73;63;142;65;47;1;1;0;0;0;0
+Montag;9. Dezember 2024;139;68;48;137;74;53;1;1;0;0;0;0
+Dienstag;10. Dezember 2024;143;76;54;128;78;74;1;1;0;0;0;0
+Mittwoch;11. Dezember 2024;144;76;60;143;74;58;1;1;0;0;0;0
+Donnerstag;12. Dezember 2024;150;75;67;139;78;73;1;1;0;0;0;0
+Freitag;13. Dezember 2024;157;75;67;142;75;46;1;1;0;0;0;0
+Samstag;14. Dezember 2024;154;74;50;118;77;71;1;1;0;0;0;0
+Sonntag;15. Dezember 2024;144;77;59;135;69;56;1;1;0;0;0;0
+Montag;16. Dezember 2024;143;75;58;141;74;65;1;1;0;0;0;0
+Dienstag;17. Dezember 2024;130;73;55;144;79;57;1;1;0;0;0;0
+Mittwoch;18. Dezember 2024;134;75;59;136;74;58;1;1;0;0;0;0
+Donnerstag;19. Dezember 2024;143;80;73;133;79;55;1;1;0;0;0;0
+Freitag;20. Dezember 2024;136;76;57;130;76;62;1;1;0;0;0;0
+Samstag;21. Dezember 2024;149;74;56;131;75;60;1;1;0;0;0;0
+Sonntag;22. Dezember 2024;144;75;58;135;78;51;1;1;0;0;0;0
+Montag;23. Dezember 2024;128;73;54;133;67;48;1;1;0;0;0;0
+Dienstag;24. Dezember 2024;131;73;54;120;70;54;1;1;0;0;0;0
+Donnerstag;26. Dezember 2024;137;68;54;136;76;66;1;1;0;0;0;0
+Freitag;27. Dezember 2024;132;74;56;139;74;58;1;1;0;0;0;0
+Samstag;28. Dezember 2024;133;72;61;129;75;44;1;1;0;0;0;0
+Sonntag;29. Dezember 2024;142;80;40;131;78;53;1;1;0;0;0;0
+Montag;30. Dezember 2024;146;67;59;134;76;48;1;1;0;0;0;0
+Dienstag;31. Dezember 2024;133;67;56;115;64;54;1;1;0;0;0;0
+Mittwoch;1. Januar 2025;128;67;53;134;75;54;;;;;;
+Donnerstag;2. Januar 2025;130;68;49;138;64;57;;;;;;
+Freitag;3. Januar 2025;122;63;46;137;69;51;;;;;;
+Samstag;4. Januar 2025;129;65;51;126;68;45;;;;;;
+Sonntag;5. Januar 2025;129;66;49;130;67;46;;;;;;
+Montag;6. Januar 2025;140;72;52;134;70;48;;;;;;
+Dienstag;7. Januar 2025;132;65;50;132;69;50;;;;;;
+Mittwoch;8. Januar 2025;140;63;53;142;70;50;;;;;;
+Donnerstag;9. Januar 2025;134;69;55;129;71;49;;;;;;
+Freitag;10. Januar 2025;140;70;51;130;70;54;;;;;;
+Samstag;11. Januar 2025;128;65;52;128;68;46;;;;;;
+Montag;13. Januar 2025;134;67;56;134;68;52;;;;;;
+Dienstag;14. Januar 2025;133;66;50;143;70;48;;;;;;
+Mittwoch;15. Januar 2025;142;75;53;119;73;50;;;;;;
+Donnerstag;16. Januar 2025;139;77;58;135;84;61;;;;;;
+Freitag;17. Januar 2025;143;76;73;145;69;57;;;;;;
+Samstag;18. Januar 2025;134;66;56;130;72;58;;;;;;
+Sonntag;19. Januar 2025;135;65;52;129;70;56;;;;;;
+Montag;20. Januar 2025;136;71;53;140;82;53;;;;;;
+Dienstag;21. Januar 2025;140;69;51;138;81;60;;;;;;
+Mittwoch;22. Januar 2025;136;73;67;127;68;58;;;;;;
+Donnerstag;23. Januar 2025;125;68;65;130;73;59;;;;;;
+Freitag;24. Januar 2025;135;77;61;127;75;50;;;;;;
+Samstag;25. Januar 2025;142;82;54;122;69;50;;;;;;
+Sonntag;26. Januar 2025;131;80;53;136;69;56;;;;;;
+Montag;27. Januar 2025;139;66;55;132;71;81;;;;;;
+Dienstag;28. Januar 2025;152;80;61;113;66;55;;;;;;
+Mittwoch;29. Januar 2025;135;73;64;130;70;54;;;;;;
+Donnerstag;30. Januar 2025;142;82;57;135;65;55;;;;;;
+Freitag;31. Januar 2025;139;67;50;120;60;50;;;;;;
+Samstag;1. Februar 2025;135;64;53;121;68;62;;;;;;
+Sonntag;2. Februar 2025;135;67;56;120;58;56;;;;;;
+Montag;3. Februar 2025;138;78;55;120;60;65;;;;;;
+Dienstag;4. Februar 2025;133;67;55;128;73;55;;;;;;
+Mittwoch;5. Februar 2025;136;64;54;121;58;55;;;;;;
+Donnerstag;6. Februar 2025;132;66;51;118;63;62;;;;;;
+Freitag;7. Februar 2025;122;65;52;127;63;56;;;;;;
+Samstag;8. Februar 2025;123;60;55;124;58;54;;;;;;
+Sonntag;9. Februar 2025;131;58;51;137;73;68;;;;;;
+Montag;10. Februar 2025;127;72;54;117;84;62;;;;;;
+Dienstag;11. Februar 2025;126;73;54;125;63;58;;;;;;
+Mittwoch;12. Februar 2025;130;69;60;124;63;69;;;;;;
+Donnerstag;13. Februar 2025;131;63;51;128;61;58;;;;;;
+Freitag;14. Februar 2025;132;66;54;0;0;0;;;;;;
+Sonntag;16. Februar 2025;132;67;53;132;72;63;;;;;;
+Montag;17. Februar 2025;131;74;56;121;70;58;;;;;;
+Dienstag;18. Februar 2025;127;70;55;128;70;60;;;;;;
+Mittwoch;19. Februar 2025;123;67;53;133;70;49;;;;;;
+Donnerstag;20. Februar 2025;126;72;62;132;71;50;;;;;;
+Freitag;21. Februar 2025;139;71;54;131;74;66;;;;;;
+Samstag;22. Februar 2025;132;75;60;120;64;50;;;;;;
+Sonntag;23. Februar 2025;130;67;53;125;67;49;;;;;;
+Montag;24. Februar 2025;127;65;52;116;60;48;;;;;;
+Dienstag;25. Februar 2025;132;64;48;135;65;49;1;0;0;2;0;0
+Mittwoch;26. Februar 2025;129;65;51;119;62;53;2;0;0;2;0;0
+Donnerstag;27. Februar 2025;122;65;52;132;69;54;1;1;0;0;0;0
+Freitag;28. Februar 2025;124;68;50;124;74;50;1;0;1;1;0;0
+Samstag;1. März 2025;128;67;49;117;67;52;0;2;2;2;0;0
+Sonntag;2. März 2025;0;0;0;0;0;0;2;0;0;2;0;0
+Montag;3. März 2025;132;67;50;122;63;52;0;1;0;1;0;0
+Dienstag;4. März 2025;130;69;51;117;63;49;0;0;0;1;0;0
+Mittwoch;5. März 2025;128;76;55;147;87;54;1;2;0;1;0;0
+Donnerstag;6. März 2025;135;73;59;0;0;0;1;1;0;1;0;0
+Donnerstag;13. März 2025;137;77;55;125;67;51;1;2;0;2;0;0
+Freitag;14. März 2025;136;71;52;128;66;53;0;1;1;1;0;0
+Samstag;15. März 2025;127;72;53;119;65;51;1;2;1;1;0;0
+Sonntag;16. März 2025;139;68;53;134;76;67;0;1;1;0;0;0
+Montag;17. März 2025;130;73;70;116;69;63;1;1;0;0;0;0
+Dienstag;18. März 2025;133;71;62;130;66;50;1;0;1;0;0;0
+Mittwoch;19. März 2025;130;86;57;121;69;69;0;1;2;1;0;0
+Donnerstag;20. März 2025;139;79;55;130;76;47;0;0;2;1;1;0
+Freitag;21. März 2025;128;66;51;137;67;47;0;1;0;1;0;0
+Samstag;22. März 2025;127;69;52;120;65;50;0;2;2;1;0;0
+Sonntag;23. März 2025;127;67;51;121;64;47;0;2;2;1;0;0
+Montag;24. März 2025;129;68;49;134;67;48;0;1;1;1;0;0
+Dienstag;25. März 2025;133;64;50;123;66;49;0;1;1;2;0;0
+Mittwoch;26. März 2025;128;65;49;120;61;53;0;1;2;1;0;0
+Donnerstag;27. März 2025;125;66;52;127;69;51;0;1;1;0;0;0
+Freitag;28. März 2025;126;66;51;127;66;53;0;1;2;0;0;0
+Samstag;29. März 2025;123;70;51;122;64;50;0;1;1;0;0;0
+Sonntag;30. März 2025;127;62;51;117;66;58;0;0;1;1;0;0
+Montag;31. März 2025;128;69;53;128;62;49;0;0;0;2;0;0
+Dienstag;1. April 2025;129;69;48;123;68;51;0;0;2;1;0;0
+Mittwoch;2. April 2025;126;69;49;140;72;52;0;1;2;1;0;0
+Donnerstag;3. April 2025;122;62;50;113;60;49;0;1;0;2;0;0
+Freitag;4. April 2025;128;63;50;119;67;46;0;1;2;1;0;0
+Samstag;5. April 2025;126;61;50;118;68;54;0;2;1;0;0;0
+Sonntag;6. April 2025;130;64;51;120;61;59;1;2;1;1;0;0
+Montag;7. April 2025;137;69;53;119;61;50;0;1;0;1;0;0
+Dienstag;8. April 2025;126;66;57;122;70;69;0;1;2;1;0;0
+Mittwoch;9. April 2025;127;65;50;122;67;49;0;1;2;1;0;0
+Donnerstag;10. April 2025;120;64;50;124;61;50;0;1;0;2;0;0
+Freitag;11. April 2025;127;65;52;118;60;49;0;1;2;1;0;0
+Samstag;12. April 2025;131;67;50;126;65;48;0;1;1;2;0;0
+Sonntag;13. April 2025;129;61;48;119;58;50;0;1;1;1;0;0
+Montag;14. April 2025;129;66;56;122;61;50;0;1;0;1;0;0
+Dienstag;15. April 2025;118;67;50;122;72;60;0;1;0;1;0;0
+Mittwoch;16. April 2025;128;62;49;136;64;64;1;2;2;1;0;0
+Donnerstag;17. April 2025;128;64;50;117;60;47;0;1;0;1;0;0
+Freitag;18. April 2025;134;63;51;119;59;50;0;1;2;1;0;0
+Samstag;19. April 2025;123;62;47;124;63;46;0;2;1;1;0;0
+Sonntag;20. April 2025;125;65;50;116;65;57;1;2;2;1;0;0
+Montag;21. April 2025;120;65;50;128;68;60;0;2;0;1;0;
+Dienstag;22. April 2025;127;68;54;113;61;51;1;1;2;2;0;0
+Mittwoch;23. April 2025;122;67;49;120;65;52;0;2;0;1;0;0
+Donnerstag;24. April 2025;130;65;48;128;70;57;1;1;2;1;0;0
+Freitag;25. April 2025;141;66;51;121;69;58;1;0;1;1;0;1
+Samstag;26. April 2025;143;79;63;133;70;52;1;0;1;;0;2
+Sonntag;27. April 2025;144;89;60;132;74;55;1;1;2;2;0;1
+Montag;28. April 2025;134;77;59;148;78;58;1;0;2;2;1;0
+Dienstag;29. April 2025;140;84;58;138;82;60;1;1;1;1;0;0
+Mittwoch;30. April 2025;140;75;55;125;59;58;1;1;0;2;0;1
+Donnerstag;1. Mai 2025;132;70;55;119;61;69;1;1;1;2;0;2
+Freitag;2. Mai 2025;135;69;62;130;80;57;1;1;1;2;0;2
+Samstag;3. Mai 2025;141;80;69;138;68;49;1;0;0;1;0;0
+Sonntag;4. Mai 2025;128;63;52;134;63;51;1;1;0;1;0;1
+Montag;5. Mai 2025;146;73;51;121;77;61;1;1;2;1;0;0
+Dienstag;6. Mai 2025;133;66;53;128;65;55;1;1;0;1;0;0
+Mittwoch;7. Mai 2025;125;63;51;135;77;56;1;2;2;1;0;0
+Donnerstag;8. Mai 2025;136;72;54;141;75;71;1;1;2;1;0;0
+Freitag;9. Mai 2025;130;74;66;131;82;62;1;1;2;1;0;0
+Samstag;10. Mai 2025;138;72;59;130;68;53;1;2;1;1;0;0
+Sonntag;11. Mai 2025;136;68;55;133;67;53;0;2;0;1;0;0
+Montag;12. Mai 2025;137;64;49;137;67;58;1;1;1;1;0;0
+Montag;13. Mai 2025;131;67;58;124;71;55;2;0;1;1;0;0
+Dienstag;14. Mai 2025;137;68;51;108;56;48;1;1;0;1;0;0
+Mittwoch;15. Mai 2025;134;70;49;121;63;59;1;1;1;2;0;1
+Donnerstag;16. Mai 2025;119;59;50;111;56;47;1;0;0;2;0;0
+Freitag;17. Mai 2025;127;67;51;130;71;52;1;;1;1;0;0
+Samstag;18. Mai 2025;137;63;56;127;71;57;1;;1;2;0;0
+Sonntag;19. Mai 2025;133;63;56;128;68;48;0;0;1;2;0;0
+Montag;20. Mai 2025;132;65;51;117;60;47;0;1;1;2;0;0
+Dienstag;21. Mai 2025;127;60;48;118;70;53;1;1;0;2;0;0
+Mittwoch;22. Mai 2025;124;69;49;0;0;0;;1;;;;
+Donnerstag;23. Mai 2025;127;62;49;119;66;51;1;1;0;2;0;0
+Freitag;24. Mai 2025;133;62;52;137;65;55;;1;0;2;0;0
+Samstag;25. Mai 2025;127;68;50;128;69;59;1;1;2;2;0;0
+Sonntag;26. Mai 2025;128;68;56;118;67;49;0;1;0;2;0;0
+Montag;27. Mai 2025;119;71;48;134;68;58;1;1;0;2;0;0
+Dienstag;28. Mai 2025;130;65;53;129;69;48;0;1;0;2;0;0
+Donnerstag;29. Mai 2025;125;61;50;137;72;54;1;1;1;2;0;0
+Samstag;31. Mai 2025;130;73;48;129;70;44;1;0;0;2;0;1
+Sonntag;1. Juni 2025;119;69;48;123;64;52;0;2;0;0;0;0
+Montag;2. Juni 2025;131;63;57;131;68;62;1;1;2;1;0;0
+Dienstag;3. Juni 2025;129;66;51;118;66;54;0;1;0;2;0;0
+Mittwoch;4. Juni 2025;122;70;54;125;65;54;1;1;2;1;0;0
+Donnerstag;5. Juni 2025;117;63;48;126;63;50;0;1;1;1;0;0
+Freitag;6. Juni 2025;130;65;49;122;65;55;0;1;2;2;0;0
+Samstag;7. Juni 2025;133;68;51;128;67;47;0;1;0;1;0;0
+Sonntag;8. Juni 2025;137;72;50;125;72;48;0;1;0;1;0;0
+Montag;9. Juni 2025;147;72;51;126;77;50;1;1;2;2;1;0
+Dienstag;10. Juni 2025;122;60;50;0;0;0;;1;;;;
+Mittwoch;11. Juni 2025;130;65;55;125;59;51;1;1;2;1;0;0
+Donnerstag;12. Juni 2025;130;67;49;117;60;52;0;1;1;2;0;0
+Freitag;13. Juni 2025;119;62;47;118;70;62;1;0;2;1;0;0
+Samstag;14. Juni 2025;126;64;56;118;62;53;1;1;0;1;0;0
+Sonntag;15. Juni 2025;140;66;56;132;67;60;1;0;1;1;0;0
+Montag;16. Juni 2025;122;69;54;134;68;53;1;0;2;1;0;0
+Dienstag;17. Juni 2025;122;69;54;123;65;49;1;1;0;1;0;0
+Mittwoch;18. Juni 2025;122;69;54;131;68;55;0;1;2;1;0;0
+Donnerstag;19. Juni 2025;132;73;53;117;68;58;0;1;2;1;0;0
+Freitag;20. Juni 2025;131;66;54;119;67;53;1;1;1;1;0;0
+Samstag;21. Juni 2025;118;66;50;0;0;0;;1;;;;
+Sonntag;22. Juni 2025;0;0;0;118;62;53;1;1;1;1;0;0
+Montag;23. Juni 2025;121;65;47;131;64;50;0;1;0;2;0;0
+Dienstag;24. Juni 2025;125;67;51;118;66;52;1;1;2;1;0;0
+Mittwoch;25. Juni 2025;123;64;49;124;66;55;1;1;0;2;0;0
+Donnerstag;26. Juni 2025;117;64;49;120;64;48;0;1;0;1;0;0
+Freitag;27. Juni 2025;124;67;54;136;70;58;1;1;2;1;0;0
+Samstag;28. Juni 2025;124;62;50;116;63;49;0;2;0;1;0;0
+Sonntag;29. Juni 2025;123;62;50;124;67;61;0;1;1;1;0;0
+Montag;30. Juni 2025;132;68;54;127;69;68;1;1;2;2;0;0
+Dienstag;1. Juli 2025;115;63;49;119;67;60;1;1;2;2;0;0
+Mittwoch;2. Juli 2025;115;61;44;115;63;48;0;1;1;1;0;0
+Donnerstag;3. Juli 2025;117;60;49;124;66;54;0;1;2;1;0;0
+Freitag;4. Juli 2025;127;65;52;116;62;46;0;1;1;1;0;0
+Samstag;5. Juli 2025;122;64;49;117;62;47;0;1;2;1;0;0
+Sonntag;6. Juli 2025;126;61;49;129;64;47;1;1;1;2;0;0
+Montag;7. Juli 2025;133;65;52;114;60;50;1;1;0;1;0;0
+Dienstag;8. Juli 2025;131;60;51;119;60;47;0;1;0;2;0;0
+Mittwoch;9. Juli 2025;123;65;48;118;68;58;0;1;2;1;0;0
+Donnerstag;10. Juli 2025;115;64;47;122;68;59;1;1;2;;0;0
+Freitag;11. Juli 2025;132;65;55;133;71;67;1;1;2;1;0;0
+Samstag;12. Juli 2025;135;67;51;120;66;47;1;2;0;1;0;0
+Sonntag;13. Juli 2025;132;72;50;126;66;51;1;1;1;1;0;0
+Montag;14. Juli 2025;127;64;46;118;60;48;0;0;0;1;0;0
+Dienstag;15. Juli 2025;125;66;49;131;63;45;0;1;0;1;;0
+Mittwoch;16. Juli 2025;0;0;0;124;63;57;0;;1;1;0;0
+Donnerstag;17. Juli 2025;123;68;55;121;63;57;0;0;0;1;0;0
+Freitag;18. Juli 2025;133;61;49;128;65;48;;;;;;
+Samstag;19. Juli 2025;127;65;50;123;64;46;;;;;;
+Sonntag;20. Juli 2025;119;67;48;131;70;65;0;2;1;1;0;0
+Montag;21. Juli 2025;123;64;56;0;0;0;;1;;;;`;
+
+        let parsedData = [];
+        let filteredData = [];
+
+        // Hilfsfunktionen aus dem echten Code
+        const safeParseFloat = (value) => {
+            const parsed = parseFloat(value);
+            return isNaN(parsed) ? 0 : parsed;
+        };
+
+        const parseImportedDate = (weekdayStr, dateStr) => {
+            if (!weekdayStr || !dateStr) return null;
+            
+            try {
+                let germanDay, germanMonth;
+                let year = null;
+                
+                // Format: "21. November 2024"
+                if (dateStr.includes('.') && dateStr.includes(' ')) {
+                    const regex = /(\d+)\.\s*(\w+)\s*(\d{4})?/;
+                    const match = dateStr.match(regex);
+                    
+                    if (match) {
+                        germanDay = match[1];
+                        germanMonth = match[2];
+                        year = match[3] || null;
+                    }
+                }
+                
+                if (germanMonth && germanDay) {
+                    const formattedDate = year 
+                        ? `${germanDay}. ${germanMonth} ${year}` 
+                        : `${germanDay}. ${germanMonth}`;
+                    
+                    return {
+                        formattedDate,
+                        tagKurz: weekdayStr.substring(0, 2)
+                    };
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Error parsing date:', error);
+                return null;
+            }
+        };
+
+        const parseCSVData = (text) => {
+            try {
+                const lines = text.split('\n').filter(line => line.trim().length > 0);
+                
+                if (lines.length < 3) {
+                    throw new Error('Die CSV-Datei enthält nicht genügend Daten.');
+                }
+                
+                const results = [];
+                let skippedCount = 0;
+                let zeroValuesCount = 0;
+                
+                // Start bei Zeile 2 (Index 2), da wir 2 Header-Zeilen haben
+                for (let i = 2; i < lines.length; i++) {
+                    const values = lines[i].split(';');
+                    
+                    // Tag und Datum extrahieren
+                    const day = values[0] ? values[0].trim() : '';
+                    const dateStr = values[1] ? values[1].trim() : '';
+                    
+                    if (!day || !dateStr) {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Datum parsen
+                    const parsedDateResult = parseImportedDate(day, dateStr);
+                    if (!parsedDateResult) {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    const { formattedDate, tagKurz } = parsedDateResult;
+                    
+                    // Blutdruckwerte extrahieren
+                    let morgenSys = safeParseFloat(values[2]) || 0;
+                    let morgenDia = safeParseFloat(values[3]) || 0;
+                    let morgenPuls = safeParseFloat(values[4]) || 0;
+                    
+                    let abendSys = safeParseFloat(values[5]) || 0;
+                    let abendDia = safeParseFloat(values[6]) || 0;
+                    let abendPuls = safeParseFloat(values[7]) || 0;
+                    
+                    // Prüfen, ob mindestens ein gültiger Blutdruckwert vorhanden ist
+                    const hasMorningValues = morgenSys > 0 && morgenDia > 0;
+                    const hasEveningValues = abendSys > 0 && abendDia > 0;
+                    
+                    if (!hasMorningValues && !hasEveningValues) {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Einzelne Nullwerte zählen
+                    if (morgenSys === 0 || morgenDia === 0 || morgenPuls === 0 || 
+                        abendSys === 0 || abendDia === 0 || abendPuls === 0) {
+                        zeroValuesCount++;
+                    }
+                    
+                    // Erstelle den Datensatz
+                    const entry = {
+                        id: `${formattedDate}-${tagKurz}`,
+                        tag: tagKurz,
+                        wochentag: tagKurz,
+                        datum: formattedDate,
+                        morgenSys: morgenSys > 0 ? morgenSys : null,
+                        morgenDia: morgenDia > 0 ? morgenDia : null,
+                        morgenPuls: morgenPuls > 0 ? morgenPuls : null,
+                        abendSys: abendSys > 0 ? abendSys : null,
+                        abendDia: abendDia > 0 ? abendDia : null,
+                        abendPuls: abendPuls > 0 ? abendPuls : null,
+                        notizen: ''
+                    };
+                    
+                    results.push(entry);
+                }
+                
+                return {
+                    data: results,
+                    skippedCount,
+                    zeroValuesCount
+                };
+            } catch (error) {
+                console.error('Parse error:', error);
+                throw error;
+            }
+        };
+
+        // Test-Funktionen
+        function loadCSVData() {
+            try {
+                const result = parseCSVData(csvContent);
+                parsedData = result.data;
+                filteredData = [...parsedData];
+                
+                document.getElementById('loadResult').innerHTML = `
+                    <div class="success">
+                        ✓ ${result.data.length} Datensätze erfolgreich geladen
+                    </div>
+                    <div class="warning">
+                        ⚠ ${result.skippedCount} Datensätze übersprungen (keine Blutdruckwerte)
+                    </div>
+                    <div class="warning">
+                        ⚠ ${result.zeroValuesCount} Datensätze mit einzelnen Nullwerten
+                    </div>
+                `;
+                
+                renderFullTable();
+            } catch (error) {
+                document.getElementById('loadResult').innerHTML = `
+                    <div class="error">✗ Fehler: ${error.message}</div>
+                `;
+            }
+        }
+
+        function testParsing() {
+            const testCases = [
+                { day: "Donnerstag", date: "21. November 2024" },
+                { day: "Mittwoch", date: "1. Januar 2025" },
+                { day: "Montag", date: "21. Juli 2025" },
+                { day: "Freitag", date: "14. Februar 2025" }
+            ];
+            
+            let html = '<table><tr><th>Tag</th><th>Datum</th><th>Parsed</th><th>Tag Kurz</th></tr>';
+            
+            testCases.forEach(test => {
+                const result = parseImportedDate(test.day, test.date);
+                if (result) {
+                    html += `<tr>
+                        <td>${test.day}</td>
+                        <td>${test.date}</td>
+                        <td>${result.formattedDate}</td>
+                        <td>${result.tagKurz}</td>
+                    </tr>`;
+                } else {
+                    html += `<tr class="error">
+                        <td>${test.day}</td>
+                        <td>${test.date}</td>
+                        <td colspan="2">FEHLER beim Parsen</td>
+                    </tr>`;
+                }
+            });
+            
+            html += '</table>';
+            document.getElementById('parseResult').innerHTML = html;
+        }
+
+        function testDateConversion() {
+            const convertToGermanDate = (entry) => {
+                if (!entry || !entry.datum) return entry;
+                
+                const updatedEntry = { ...entry };
+                let datumStr = entry.datum;
+                let hasYear = false;
+                let year = '';
+                
+                const yearMatch = datumStr.match(/\b(20\d{2})\b/);
+                if (yearMatch) {
+                    hasYear = true;
+                    year = yearMatch[1];
+                }
+                
+                if (!hasYear && !updatedEntry.datum.match(/\b20\d{2}\b/)) {
+                    updatedEntry.datum = `${updatedEntry.datum} ${new Date().getFullYear()}`;
+                }
+                
+                return updatedEntry;
+            };
+            
+            let html = '<h3>Datum-Konvertierung Test</h3>';
+            html += '<table><tr><th>Original</th><th>Konvertiert</th><th>Hat Jahr?</th></tr>';
+            
+            // Teste mit verschiedenen Formaten
+            const testDates = [
+                { datum: "21. November 2024" },
+                { datum: "1. Januar" },
+                { datum: "15. März 2025" }
+            ];
+            
+            testDates.forEach(test => {
+                const converted = convertToGermanDate(test);
+                const hasYear = converted.datum.match(/\b20\d{2}\b/) ? 'Ja' : 'Nein';
+                html += `<tr>
+                    <td>${test.datum}</td>
+                    <td>${converted.datum}</td>
+                    <td class="${hasYear === 'Ja' ? 'success' : 'error'}">${hasYear}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('dateResult').innerHTML = html;
+        }
+
+        function sortData(direction) {
+            const months = {
+                'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
+                'Mai': 4, 'Juni': 5, 'Juli': 6, 'August': 7, 
+                'September': 8, 'Oktober': 9, 'November': 10, 'Dezember': 11
+            };
+            
+            const parseDate = (str) => {
+                if (!str) return new Date(0);
+                
+                let day, month, year;
+                
+                const yearMatch = str.match(/\b(20\d{2})\b/);
+                year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+                
+                if (str.includes('.')) {
+                    const parts = str.split('. ');
+                    day = parseInt(parts[0]);
+                    
+                    if (parts.length > 1) {
+                        const monthAndYear = parts[1].trim();
+                        const monthName = monthAndYear.split(' ')[0].trim();
+                        month = monthName;
+                    }
+                }
+                
+                if (months[month] === undefined) {
+                    return new Date(0);
+                }
+                
+                return new Date(year, months[month], day);
+            };
+            
+            filteredData.sort((a, b) => {
+                const dateA = parseDate(a.datum);
+                const dateB = parseDate(b.datum);
+                
+                return direction === 'desc' ? dateB - dateA : dateA - dateB;
+            });
+            
+            let html = `<h3>Sortiert: ${direction === 'desc' ? 'Absteigend' : 'Aufsteigend'}</h3>`;
+            html += '<table><tr><th>Datum</th><th>Morgen Sys/Dia</th><th>Abend Sys/Dia</th></tr>';
+            
+            filteredData.slice(0, 10).forEach(entry => {
+                html += `<tr>
+                    <td>${entry.datum}</td>
+                    <td>${entry.morgenSys || '-'}/${entry.morgenDia || '-'}</td>
+                    <td>${entry.abendSys || '-'}/${entry.abendDia || '-'}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            html += `<p>Zeige die ersten 10 von ${filteredData.length} Einträgen</p>`;
+            
+            document.getElementById('sortResult').innerHTML = html;
+        }
+
+        function filterByYear(year) {
+            filteredData = parsedData.filter(entry => entry.datum.includes(year.toString()));
+            renderFilterResult(`Jahr ${year}`);
+        }
+
+        function filterByMonth(month) {
+            filteredData = parsedData.filter(entry => entry.datum.includes(month));
+            renderFilterResult(`Monat ${month}`);
+        }
+
+        function showAll() {
+            filteredData = [...parsedData];
+            renderFilterResult('Alle Daten');
+        }
+
+        function renderFilterResult(filterName) {
+            let html = `<h3>Filter: ${filterName}</h3>`;
+            html += `<p>${filteredData.length} Einträge gefunden</p>`;
+            html += '<table><tr><th>Datum</th><th>Morgen Sys/Dia</th><th>Abend Sys/Dia</th></tr>';
+            
+            filteredData.slice(0, 10).forEach(entry => {
+                html += `<tr>
+                    <td>${entry.datum}</td>
+                    <td>${entry.morgenSys || '-'}/${entry.morgenDia || '-'}</td>
+                    <td>${entry.abendSys || '-'}/${entry.abendDia || '-'}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('filterResult').innerHTML = html;
+        }
+
+        function findProblems() {
+            let html = '<h3>Gefundene Probleme</h3>';
+            
+            // Einträge ohne Jahr
+            const noYearEntries = parsedData.filter(entry => !entry.datum.match(/\b20\d{2}\b/));
+            html += `<div class="error">❌ ${noYearEntries.length} Einträge ohne Jahr:</div>`;
+            if (noYearEntries.length > 0) {
+                html += '<ul>';
+                noYearEntries.forEach(entry => {
+                    html += `<li>${entry.datum}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            // Einträge mit 0-Werten
+            const zeroValueEntries = parsedData.filter(entry => 
+                entry.morgenSys === 0 || entry.morgenDia === 0 || 
+                entry.abendSys === 0 || entry.abendDia === 0
+            );
+            html += `<div class="warning">⚠️ ${zeroValueEntries.length} Einträge mit 0-Werten</div>`;
+            
+            // Doppelte Einträge
+            const dateCount = {};
+            parsedData.forEach(entry => {
+                dateCount[entry.datum] = (dateCount[entry.datum] || 0) + 1;
+            });
+            const duplicates = Object.entries(dateCount).filter(([date, count]) => count > 1);
+            html += `<div class="warning">⚠️ ${duplicates.length} Daten mit mehreren Einträgen</div>`;
+            
+            document.getElementById('problemResult').innerHTML = html;
+        }
+
+        function renderFullTable() {
+            let html = '<h3>Alle importierten Daten</h3>';
+            html += '<table><tr><th>ID</th><th>Tag</th><th>Datum</th><th>Morgen Sys/Dia/Puls</th><th>Abend Sys/Dia/Puls</th></tr>';
+            
+            parsedData.forEach(entry => {
+                const noYear = !entry.datum.match(/\b20\d{2}\b/);
+                html += `<tr class="${noYear ? 'no-year' : ''}">
+                    <td>${entry.id}</td>
+                    <td>${entry.tag}</td>
+                    <td>${entry.datum} ${noYear ? '⚠️' : ''}</td>
+                    <td>${entry.morgenSys || '-'}/${entry.morgenDia || '-'}/${entry.morgenPuls || '-'}</td>
+                    <td>${entry.abendSys || '-'}/${entry.abendDia || '-'}/${entry.abendPuls || '-'}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('fullTable').innerHTML = html;
+        }
+
+        // Automatisch laden beim Start
+        window.onload = () => {
+            loadCSVData();
+        };
+    </script>
+</body>
+</html>

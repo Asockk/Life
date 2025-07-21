@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finaler Import Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th { background: #f0f0f0; }
+        .highlight { background: #ffffe0; }
+        .problem { background: #ffcccc; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Finaler Import Test - Blutdruck-Daten</h1>
+        
+        <div id="results"></div>
+        
+        <h2>Importierte Daten</h2>
+        <div id="dataTable"></div>
+    </div>
+
+    <script>
+        // Test-Daten speziell für März
+        const testData = [
+            { tag: "Samstag", datum: "1. März 2025" },
+            { tag: "Sonntag", datum: "2. März 2025" },
+            { tag: "Montag", datum: "3. März 2025" },
+            { tag: "Dienstag", datum: "4. März 2025" },
+            { tag: "Mittwoch", datum: "5. März 2025" },
+            { tag: "Donnerstag", datum: "6. März 2025" },
+            { tag: "Donnerstag", datum: "13. März 2025" },
+            { tag: "Freitag", datum: "14. März 2025" },
+            { tag: "Samstag", datum: "15. März 2025" }
+        ];
+
+        // Hilfsfunktionen
+        const translateDayToShortGerman = (day) => {
+            if (!day || typeof day !== 'string') return 'Mo';
+            
+            const lowercaseDay = day.toLowerCase().trim();
+            
+            const dayMap = {
+                'monday': 'Mo', 'montag': 'Mo',
+                'tuesday': 'Di', 'dienstag': 'Di',
+                'wednesday': 'Mi', 'mittwoch': 'Mi',
+                'thursday': 'Do', 'donnerstag': 'Do',
+                'friday': 'Fr', 'freitag': 'Fr',
+                'saturday': 'Sa', 'samstag': 'Sa',
+                'sunday': 'So', 'sonntag': 'So'
+            };
+            
+            for (const [key, value] of Object.entries(dayMap)) {
+                if (lowercaseDay.includes(key)) return value;
+            }
+            
+            if (['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so'].includes(lowercaseDay)) {
+                return day.charAt(0).toUpperCase() + day.charAt(1).toLowerCase();
+            }
+            
+            return 'Mo';
+        };
+
+        const parseImportedDate = (weekdayStr, dateStr) => {
+            if (!weekdayStr || !dateStr) return null;
+            
+            try {
+                const tagKurz = translateDayToShortGerman(weekdayStr);
+                
+                let germanDay, germanMonth;
+                let year = null;
+                
+                if (dateStr.includes('.') && dateStr.includes(' ')) {
+                    const regex = /(\d+)\.\s*(\w+)\s*(\d{4})?/;
+                    const match = dateStr.match(regex);
+                    
+                    if (match) {
+                        germanDay = match[1];
+                        germanMonth = match[2];
+                        year = match[3] || null;
+                    }
+                }
+                
+                if (germanMonth && germanDay) {
+                    // Monat-Übersetzung mit März-Varianten
+                    const monthTranslation = {
+                        'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
+                        'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
+                        'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
+                        'Marz': 'März', 'Maerz': 'März'
+                    };
+                    
+                    const normalizedMonth = germanMonth.replace(/ä/g, 'ä').replace(/ö/g, 'ö').replace(/ü/g, 'ü')
+                                                     .replace(/Ä/g, 'Ä').replace(/Ö/g, 'Ö').replace(/Ü/g, 'Ü');
+                    
+                    const deMonth = monthTranslation[normalizedMonth] || normalizedMonth;
+                    
+                    const formattedDate = year 
+                        ? `${germanDay}. ${deMonth} ${year}` 
+                        : `${germanDay}. ${deMonth}`;
+                    
+                    return {
+                        formattedDate,
+                        tagKurz,
+                        tag: germanDay,
+                        monat: deMonth,
+                        jahr: year || new Date().getFullYear()
+                    };
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Error parsing date:', error);
+                return null;
+            }
+        };
+
+        const germanDateToISO = (germanDate) => {
+            if (!germanDate) return '';
+            
+            const months = {
+                'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+                'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+                'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12',
+                'Marz': '03', 'Maerz': '03'
+            };
+            
+            const match = germanDate.match(/(\d+)\.\s*(\w+)\s*(\d{4})?/);
+            if (match) {
+                const day = match[1].padStart(2, '0');
+                const monthName = match[2];
+                const year = match[3] || new Date().getFullYear().toString();
+                const month = months[monthName];
+                
+                if (month) {
+                    return `${year}-${month}-${day}`;
+                }
+            }
+            
+            return '';
+        };
+
+        // Test-Funktion
+        function runTests() {
+            let resultsHTML = '<h2>Test-Ergebnisse</h2>';
+            let tableHTML = '<table><thead><tr><th>Tag</th><th>Datum</th><th>Parsed</th><th>Tag Kurz</th><th>ISO</th><th>Status</th></tr></thead><tbody>';
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            testData.forEach(test => {
+                const parsed = parseImportedDate(test.tag, test.datum);
+                const iso = parsed ? germanDateToISO(parsed.formattedDate) : '';
+                
+                if (parsed && iso) {
+                    successCount++;
+                    tableHTML += `<tr>
+                        <td>${test.tag}</td>
+                        <td>${test.datum}</td>
+                        <td>${parsed.formattedDate}</td>
+                        <td>${parsed.tagKurz}</td>
+                        <td>${iso}</td>
+                        <td class="success">✓ OK</td>
+                    </tr>`;
+                } else {
+                    errorCount++;
+                    tableHTML += `<tr class="problem">
+                        <td>${test.tag}</td>
+                        <td>${test.datum}</td>
+                        <td colspan="3">FEHLER beim Parsen</td>
+                        <td class="error">✗ Fehler</td>
+                    </tr>`;
+                }
+            });
+            
+            tableHTML += '</tbody></table>';
+            
+            // Ergebnis-Zusammenfassung
+            resultsHTML += `<div class="test-result ${errorCount === 0 ? 'success' : 'error'}">`;
+            resultsHTML += `<strong>Zusammenfassung:</strong><br>`;
+            resultsHTML += `✓ ${successCount} erfolgreich<br>`;
+            resultsHTML += `✗ ${errorCount} Fehler`;
+            resultsHTML += '</div>';
+            
+            // März-spezifische Tests
+            resultsHTML += '<h3>März-spezifische Tests</h3>';
+            
+            const maerzVarianten = ['März', 'Marz', 'Maerz'];
+            maerzVarianten.forEach(variant => {
+                const testDate = `15. ${variant} 2025`;
+                const parsed = parseImportedDate('Samstag', testDate);
+                const iso = parsed ? germanDateToISO(parsed.formattedDate) : '';
+                
+                resultsHTML += `<div class="test-result ${iso ? 'success' : 'error'}">`;
+                resultsHTML += `"${testDate}" → ${parsed ? parsed.formattedDate : 'FEHLER'} → ISO: ${iso || 'FEHLER'}`;
+                resultsHTML += '</div>';
+            });
+            
+            document.getElementById('results').innerHTML = resultsHTML;
+            document.getElementById('dataTable').innerHTML = tableHTML;
+        }
+
+        // Tests beim Laden ausführen
+        window.onload = runTests;
+    </script>
+</body>
+</html>

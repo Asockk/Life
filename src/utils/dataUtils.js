@@ -210,37 +210,19 @@ export const parseCSVData = (text) => {
     let mSysIndex = -1, mDiaIndex = -1, mPulseIndex = -1;
     let eSysIndex = -1, eDiaIndex = -1, ePulseIndex = -1;
     
-    // Wenn bpMorningIndex und bpEveningIndex gefunden wurden
-    if (bpMorningIndex !== -1) {
-      // In deinem Format sind die Werte direkt nach "Blood Pressure M" / "Blutdruck Morgen"
-      mSysIndex = bpMorningIndex;
-      mDiaIndex = bpMorningIndex + 1;
-      mPulseIndex = bpMorningIndex + 2;
-    } else {
-      // Fallback: Suche nach Sys/Dia/Pulse in den Unterspalten
-      for (let i = 0; i < subHeaders.length; i++) {
-        const header = subHeaders[i].toLowerCase();
-        if (header === 'sys') {
-          mSysIndex = i;
-        } else if (header === 'dia') {
-          mDiaIndex = i;
-        } else if (header === 'pulse' || header === 'puls') {
-          mPulseIndex = i;
-        }
-      }
-    }
+    // Suche die Indizes für Sys/Dia/Puls in den Unterspalten
+    // Die CSV hat das Format: Tag;Datum;MorgenSys;MorgenDia;MorgenPuls;AbendSys;AbendDia;AbendPuls;...
+    // Index 0 = Tag, Index 1 = Datum
+    // Index 2,3,4 = Morgen Sys/Dia/Puls
+    // Index 5,6,7 = Abend Sys/Dia/Puls
     
-    if (bpEveningIndex !== -1) {
-      // In deinem Format sind die Werte direkt nach "Blood Pressure E" / "Blutdruck Abend"
-      eSysIndex = bpEveningIndex;
-      eDiaIndex = bpEveningIndex + 1;
-      ePulseIndex = bpEveningIndex + 2;
-    } else if (mSysIndex !== -1 && mDiaIndex !== -1 && mPulseIndex !== -1) {
-      // Fallback: Wenn Morning-Indizes gefunden wurden, nutze die nächsten 3 Spalten für Evening
-      eSysIndex = mPulseIndex + 1;
-      eDiaIndex = mPulseIndex + 2;
-      ePulseIndex = mPulseIndex + 3;
-    }
+    // Basierend auf deiner CSV-Struktur:
+    mSysIndex = 2;
+    mDiaIndex = 3;
+    mPulseIndex = 4;
+    eSysIndex = 5;
+    eDiaIndex = 6;
+    ePulseIndex = 7;
     
     console.log(`Erkannte Spalten: 
       Tag = ${dayIndex}, 
@@ -310,13 +292,15 @@ export const parseCSVData = (text) => {
       const entry = {
         id: Date.now() + i, // Eindeutige ID generieren
         tag: tagKurz,
+        wochentag: tagKurz, // Wichtig: wochentag muss auch gesetzt werden!
         datum: formattedDate,
-        morgenSys,
-        morgenDia,
-        morgenPuls,
-        abendSys,
-        abendDia,
-        abendPuls,
+        morgenSys: morgenSys > 0 ? morgenSys : null,
+        morgenDia: morgenDia > 0 ? morgenDia : null,
+        morgenPuls: morgenPuls > 0 ? morgenPuls : null,
+        abendSys: abendSys > 0 ? abendSys : null,
+        abendDia: abendDia > 0 ? abendDia : null,
+        abendPuls: abendPuls > 0 ? abendPuls : null,
+        notizen: '',
         // Standardisiertes Datum hinzufügen für spätere Duplikaterkennung
         _standardDate: standardizeDateFormat(formattedDate, tagKurz)
       };
@@ -417,14 +401,20 @@ function parseImportedDate(weekdayStr, dateStr) {
     
     // Wenn wir den Monat und Tag haben, formatieren wir das Datum
     if (germanMonth && germanDay) {
-      // Monat in deutsche Form umwandeln
+      // Monat in deutsche Form umwandeln - mit Unterstützung für Umlaute
       const monthTranslation = {
         'January': 'Januar', 'February': 'Februar', 'March': 'März', 'April': 'April',
         'May': 'Mai', 'June': 'Juni', 'July': 'Juli', 'August': 'August',
-        'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember'
+        'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Dezember',
+        // Alternative Schreibweisen für März
+        'Marz': 'März', 'Maerz': 'März'
       };
       
-      const deMonth = monthTranslation[germanMonth] || germanMonth;
+      // Normalisiere den Monat (entferne mögliche Encoding-Probleme)
+      const normalizedMonth = germanMonth.replace(/ä/g, 'ä').replace(/ö/g, 'ö').replace(/ü/g, 'ü')
+                                       .replace(/Ä/g, 'Ä').replace(/Ö/g, 'Ö').replace(/Ü/g, 'Ü');
+      
+      const deMonth = monthTranslation[normalizedMonth] || normalizedMonth;
       
       // Formatiertes Datum im europäischen Format mit Jahr (falls verfügbar)
       const formattedDate = year 
