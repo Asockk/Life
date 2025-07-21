@@ -193,6 +193,7 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               strokeWidth={3}
               animationDuration={1500}
               dot={<AnimatedDot />}
+              connectNulls={false}
             />
             <Area 
               type="monotone" 
@@ -203,6 +204,7 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               strokeWidth={3}
               animationDuration={1500}
               dot={<AnimatedDot />}
+              connectNulls={false}
             />
             <ReferenceLine y={120} stroke="#2ECC40" strokeDasharray="5 5" />
             <ReferenceLine y={80} stroke="#2ECC40" strokeDasharray="5 5" />
@@ -231,6 +233,7 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               strokeWidth={3}
               animationDuration={1500}
               dot={{ r: 4, fill: '#2ECC40' }}
+              connectNulls={false}
             />
             <ReferenceLine y={60} stroke="#0074D9" strokeDasharray="5 5" label="Normal" />
             <ReferenceLine y={100} stroke="#FF851B" strokeDasharray="5 5" label="Hoch" />
@@ -246,8 +249,8 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
             <YAxis yAxisId="right" orientation="right" domain={[40, 100]} stroke={darkMode ? '#9ca3af' : '#6b7280'} />
             <Tooltip content={<FuturisticTooltip />} />
             <Bar yAxisId="left" dataKey="healthScore" fill="url(#healthGradient)" radius={[8, 8, 0, 0]} />
-            <Line yAxisId="right" type="monotone" dataKey="map" stroke="#B10DC9" strokeWidth={2} />
-            <Line yAxisId="right" type="monotone" dataKey="pp" stroke="#FF851B" strokeWidth={2} />
+            <Line yAxisId="right" type="monotone" dataKey="map" stroke="#B10DC9" strokeWidth={2} connectNulls={false} />
+            <Line yAxisId="right" type="monotone" dataKey="pp" stroke="#FF851B" strokeWidth={2} connectNulls={false} />
             <defs>
               <linearGradient id="healthGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset={off} stopColor="#2ECC40" stopOpacity={1} />
@@ -271,6 +274,7 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               strokeWidth={3}
               dot={{ r: 4 }}
               animationDuration={1500}
+              connectNulls={false}
             />
             <Line 
               type="monotone" 
@@ -279,6 +283,7 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               strokeWidth={3}
               dot={{ r: 4 }}
               animationDuration={1500}
+              connectNulls={false}
             />
             <Line 
               type="monotone" 
@@ -287,6 +292,7 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               strokeWidth={2}
               dot={{ r: 3 }}
               animationDuration={1500}
+              connectNulls={false}
             />
             <ReferenceLine y={avgValues?.sys || 0} stroke="#B10DC9" strokeDasharray="5 5" />
             <ReferenceLine y={avgValues?.dia || 0} stroke="#7FDBFF" strokeDasharray="5 5" />

@@ -6,13 +6,43 @@ export const prepareDataWithMovingAverages = (data) => {
   return data.map((item, index) => {
     const result = { ...item };
     
-    // Berechne gleitende Durchschnitte
-    result.morgenSysMA = calculateMovingAverage(data, index, 'morgenSys');
-    result.morgenDiaMA = calculateMovingAverage(data, index, 'morgenDia');
-    result.morgenPulsMA = calculateMovingAverage(data, index, 'morgenPuls');
-    result.abendSysMA = calculateMovingAverage(data, index, 'abendSys');
-    result.abendDiaMA = calculateMovingAverage(data, index, 'abendDia');
-    result.abendPulsMA = calculateMovingAverage(data, index, 'abendPuls');
+    // Berechne gleitende Durchschnitte nur wenn aktuelle Werte vorhanden sind
+    // Dies verhindert Lücken in den Trendlinien
+    if (item.morgenSys > 0) {
+      result.morgenSysMA = calculateMovingAverage(data, index, 'morgenSys');
+    } else {
+      result.morgenSysMA = null;
+    }
+    
+    if (item.morgenDia > 0) {
+      result.morgenDiaMA = calculateMovingAverage(data, index, 'morgenDia');
+    } else {
+      result.morgenDiaMA = null;
+    }
+    
+    if (item.morgenPuls > 0) {
+      result.morgenPulsMA = calculateMovingAverage(data, index, 'morgenPuls');
+    } else {
+      result.morgenPulsMA = null;
+    }
+    
+    if (item.abendSys > 0) {
+      result.abendSysMA = calculateMovingAverage(data, index, 'abendSys');
+    } else {
+      result.abendSysMA = null;
+    }
+    
+    if (item.abendDia > 0) {
+      result.abendDiaMA = calculateMovingAverage(data, index, 'abendDia');
+    } else {
+      result.abendDiaMA = null;
+    }
+    
+    if (item.abendPuls > 0) {
+      result.abendPulsMA = calculateMovingAverage(data, index, 'abendPuls');
+    } else {
+      result.abendPulsMA = null;
+    }
     
     return result;
   });
