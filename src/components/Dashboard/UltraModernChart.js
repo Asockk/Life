@@ -1,5 +1,5 @@
 // Ultra Modern Blood Pressure Chart
-import React, { useState, useRef, memo } from 'react';
+import React, { useState, useRef, memo, useMemo } from 'react';
 import { 
   AreaChart, Area, LineChart, Line, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -62,6 +62,86 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
   };
 
   const off = gradientOffset();
+
+  // Analyse-Daten für die neue Analyse-Ansicht
+  const categoryData = useMemo(() => {
+    if (selectedMetric !== 'analysis') return [];
+    
+    const categories = {
+      'Optimal': { count: 0, color: '#22c55e' },
+      'Normal': { count: 0, color: '#3b82f6' },
+      'Hochnormal': { count: 0, color: '#f59e0b' },
+      'Hypertonie': { count: 0, color: '#ef4444' }
+    };
+    
+    // Zähle nur Einträge mit tatsächlichen Werten
+    enhancedData.forEach(item => {
+      const sys = item[`${prefix}Sys`];
+      const dia = item[`${prefix}Dia`];
+      
+      if (sys > 0 && dia > 0) {
+        if (sys < 120 && dia < 80) categories['Optimal'].count++;
+        else if (sys < 130 && dia < 85) categories['Normal'].count++;
+        else if (sys < 140 && dia < 90) categories['Hochnormal'].count++;
+        else categories['Hypertonie'].count++;
+      }
+    });
+    
+    // Konvertiere für Recharts
+    return Object.entries(categories)
+      .filter(([_, data]) => data.count > 0) // Nur Kategorien mit Werten
+      .map(([name, data]) => ({
+        name,
+        wert: data.count,
+        color: data.color
+      }));
+  }, [enhancedData, prefix, selectedMetric]);
+  
+  // Variabilität berechnen (Standard-Abweichung)
+  const variabilityData = useMemo(() => {
+    if (selectedMetric !== 'analysis') return [];
+    
+    const result = [];
+    const windowSize = 7; // 7-Tage-Fenster
+    
+    for (let i = windowSize - 1; i < enhancedData.length; i++) {
+      const window = enhancedData.slice(i - windowSize + 1, i + 1);
+      const sysValues = window
+        .map(d => d[`${prefix}Sys`])
+        .filter(v => v > 0);
+      const diaValues = window
+        .map(d => d[`${prefix}Dia`])
+        .filter(v => v > 0);
+      
+      if (sysValues.length >= 3) { // Mindestens 3 Werte für sinnvolle Berechnung
+        const avgSys = sysValues.reduce((a, b) => a + b, 0) / sysValues.length;
+        const avgDia = diaValues.reduce((a, b) => a + b, 0) / diaValues.length;
+        
+        const sysVariability = Math.sqrt(
+          sysValues.reduce((sum, val) => sum + Math.pow(val - avgSys, 2), 0) / sysValues.length
+        );
+        const diaVariability = Math.sqrt(
+          diaValues.reduce((sum, val) => sum + Math.pow(val - avgDia, 2), 0) / diaValues.length
+        );
+        
+        result.push({
+          ...enhancedData[i],
+          sysVariability: Math.round(sysVariability),
+          diaVariability: Math.round(diaVariability),
+          riskScore: Math.round((sysVariability + diaVariability) / 2)
+        });
+      } else {
+        result.push({
+          ...enhancedData[i],
+          sysVariability: null,
+          diaVariability: null,
+          riskScore: null
+        });
+      }
+    }
+    
+    return result;
+  }, [enhancedData, prefix, selectedMetric]);
 
   // Futuristic Tooltip
   const FuturisticTooltip = ({ active, payload, label }) => {
@@ -245,81 +325,6 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
 
       case 'analysis':
         // Neue Analyse-Ansicht: Kategorien-Verteilung und Trends
-        const categoryData = useMemo(() => {
-          const categories = {
-            'Optimal': { count: 0, color: '#22c55e' },
-            'Normal': { count: 0, color: '#3b82f6' },
-            'Hochnormal': { count: 0, color: '#f59e0b' },
-            'Hypertonie': { count: 0, color: '#ef4444' }
-          };
-          
-          // Zähle nur Einträge mit tatsächlichen Werten
-          enhancedData.forEach(item => {
-            const sys = item[`${prefix}Sys`];
-            const dia = item[`${prefix}Dia`];
-            
-            if (sys > 0 && dia > 0) {
-              if (sys < 120 && dia < 80) categories['Optimal'].count++;
-              else if (sys < 130 && dia < 85) categories['Normal'].count++;
-              else if (sys < 140 && dia < 90) categories['Hochnormal'].count++;
-              else categories['Hypertonie'].count++;
-            }
-          });
-          
-          // Konvertiere für Recharts
-          return Object.entries(categories)
-            .filter(([_, data]) => data.count > 0) // Nur Kategorien mit Werten
-            .map(([name, data]) => ({
-              name,
-              wert: data.count,
-              color: data.color
-            }));
-        }, [enhancedData, prefix]);
-        
-        // Variabilität berechnen (Standard-Abweichung)
-        const variabilityData = useMemo(() => {
-          const result = [];
-          const windowSize = 7; // 7-Tage-Fenster
-          
-          for (let i = windowSize - 1; i < enhancedData.length; i++) {
-            const window = enhancedData.slice(i - windowSize + 1, i + 1);
-            const sysValues = window
-              .map(d => d[`${prefix}Sys`])
-              .filter(v => v > 0);
-            const diaValues = window
-              .map(d => d[`${prefix}Dia`])
-              .filter(v => v > 0);
-            
-            if (sysValues.length >= 3) { // Mindestens 3 Werte für sinnvolle Berechnung
-              const avgSys = sysValues.reduce((a, b) => a + b, 0) / sysValues.length;
-              const avgDia = diaValues.reduce((a, b) => a + b, 0) / diaValues.length;
-              
-              const sysVariability = Math.sqrt(
-                sysValues.reduce((sum, val) => sum + Math.pow(val - avgSys, 2), 0) / sysValues.length
-              );
-              const diaVariability = Math.sqrt(
-                diaValues.reduce((sum, val) => sum + Math.pow(val - avgDia, 2), 0) / diaValues.length
-              );
-              
-              result.push({
-                ...enhancedData[i],
-                sysVariability: Math.round(sysVariability),
-                diaVariability: Math.round(diaVariability),
-                riskScore: Math.round((sysVariability + diaVariability) / 2)
-              });
-            } else {
-              result.push({
-                ...enhancedData[i],
-                sysVariability: null,
-                diaVariability: null,
-                riskScore: null
-              });
-            }
-          }
-          
-          return result;
-        }, [enhancedData, prefix]);
-        
         return (
           <div className="space-y-4">
             {/* Kategorien-Verteilung */}
