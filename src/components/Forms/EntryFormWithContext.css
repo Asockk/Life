@@ -1,0 +1,312 @@
+/* EntryFormWithContext iOS Styles */
+
+/* Form specific styles for iOS design */
+.ios-input-number {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  background-color: var(--ios-bg-primary);
+  color: var(--ios-text-primary);
+  border: 1px solid var(--ios-separator);
+  transition: all 0.2s ease;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+.ios-input-number:focus {
+  outline: none;
+  border-color: var(--ios-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.ios-input-number.error {
+  border-color: var(--ios-red);
+}
+
+.ios-input-number.error:focus {
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.1);
+}
+
+/* Remove spinner buttons */
+.ios-input-number::-webkit-inner-spin-button,
+.ios-input-number::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Inline inputs */
+.ios-input-inline {
+  background: transparent;
+  border: none;
+  text-align: right;
+  color: var(--ios-blue);
+  font-size: 16px;
+  padding: 0;
+  -webkit-appearance: none;
+}
+
+.ios-input-inline:focus {
+  outline: none;
+}
+
+/* Inline select */
+.ios-select-inline {
+  background: transparent;
+  border: none;
+  text-align: right;
+  color: var(--ios-text-secondary);
+  font-size: 16px;
+  padding: 0;
+  padding-right: 20px;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%238e8e93' d='M6 8.5L2 4.5h8z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right center;
+}
+
+.ios-select-inline:focus {
+  outline: none;
+  color: var(--ios-blue);
+}
+
+/* List divider */
+.ios-list-divider {
+  height: 0.5px;
+  background-color: var(--ios-separator);
+  margin-left: 16px;
+}
+
+/* Tags */
+.ios-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background-color: var(--ios-blue);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ios-tag:hover {
+  opacity: 0.8;
+}
+
+.ios-tag:active {
+  transform: scale(0.95);
+}
+
+/* Factor buttons */
+.ios-factor-button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  background-color: var(--ios-bg-tertiary);
+  color: var(--ios-text-primary);
+}
+
+/* Compact factor cards */
+.ios-card.compact {
+  padding: 12px;
+}
+
+/* Ensure full height utilization */
+.ios-modal-fullscreen .flex-1 {
+  min-height: 0;
+}
+
+/* Compact list items */
+.ios-list-item-compact {
+  padding: 12px 16px;
+  background: var(--ios-bg-primary);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.ios-list-item-compact:hover {
+  background: var(--ios-bg-tertiary);
+}
+
+/* Mini buttons for factors */
+.ios-mini-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--ios-separator);
+  background: transparent;
+  color: var(--ios-text-secondary);
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ios-mini-button:hover {
+  border-color: var(--ios-blue);
+  background: rgba(0, 122, 255, 0.05);
+}
+
+.ios-mini-button.active {
+  border-color: var(--ios-blue);
+  background: var(--ios-blue);
+  color: white;
+}
+
+.ios-mini-button:active {
+  transform: scale(0.9);
+}
+
+/* Factor row styles */
+.ios-factor-row {
+  padding: 8px 0;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.ios-factor-row.active {
+  opacity: 1;
+}
+
+/* iOS-style slider */
+.ios-factor-slider {
+  position: relative;
+  padding: 10px 0;
+}
+
+.ios-slider-track {
+  position: relative;
+  height: 4px;
+  background: var(--ios-separator);
+  border-radius: 2px;
+}
+
+.ios-slider-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.ios-slider-stop {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ios-bg-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ios-slider-stop:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.ios-slider-stop.active {
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ios-slider-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+}
+
+.ios-slider-stop:not(.active) .ios-slider-label {
+  color: var(--ios-text-tertiary);
+}
+
+/* Dark mode adjustments */
+.dark .ios-list-item-compact {
+  background: var(--ios-bg-secondary);
+}
+
+.dark .ios-list-item-compact:hover {
+  background: var(--ios-bg-tertiary);
+}
+
+.dark .ios-mini-button {
+  border-color: var(--ios-separator);
+  color: var(--ios-text-secondary);
+}
+
+.dark .ios-mini-button:hover {
+  border-color: var(--ios-blue);
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.dark .ios-slider-stop {
+  background: var(--ios-bg-secondary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark .ios-slider-stop.active {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+.ios-factor-button:hover {
+  background-color: var(--ios-separator);
+}
+
+.ios-factor-button.active {
+  background-color: var(--ios-blue);
+  color: white;
+}
+
+.ios-factor-button:active {
+  transform: scale(0.95);
+}
+
+/* List item hover state */
+.ios-list-item {
+  transition: background-color 0.15s ease;
+}
+
+.ios-list-item:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Dark mode specific */
+.dark .ios-input-number {
+  background-color: var(--ios-bg-tertiary);
+  border-color: var(--ios-separator);
+}
+
+.dark .ios-list-divider {
+  opacity: 0.3;
+}
+
+.dark .ios-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.dark .ios-factor-button {
+  background-color: var(--ios-bg-secondary);
+}
+
+.dark .ios-factor-button:hover {
+  background-color: var(--ios-bg-tertiary);
+}

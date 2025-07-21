@@ -1,0 +1,229 @@
+/* styles/darkMode.css */
+
+/* Root dark mode variables */
+:root {
+  --transition-theme: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Smooth transitions for theme switching */
+html {
+  transition: var(--transition-theme);
+}
+
+/* Dark mode base styles */
+html.dark {
+  color-scheme: dark;
+}
+
+/* Improved scrollbar for dark mode */
+html.dark ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 6px;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 6px;
+  border: 2px solid #1e293b;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Form elements with better contrast */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #334155;
+  border-color: #475569;
+  color: #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  background-color: #475569;
+  border-color: #3b82f6;
+  outline: 2px solid rgba(59, 130, 246, 0.3);
+  outline-offset: 2px;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #94a3b8;
+}
+
+/* Button improvements */
+html.dark button {
+  transition: all 0.2s ease;
+}
+
+/* Shadow adjustments for dark mode */
+html.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+html.dark .shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+html.dark .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* Blood pressure category colors with better contrast */
+html.dark .bp-optimal {
+  color: #34d399;
+}
+
+html.dark .bp-normal {
+  color: #10b981;
+}
+
+html.dark .bp-high-normal {
+  color: #fbbf24;
+}
+
+html.dark .bp-hypertension-1 {
+  color: #fb923c;
+}
+
+html.dark .bp-hypertension-2 {
+  color: #f87171;
+}
+
+html.dark .bp-hypertension-3 {
+  color: #dc2626;
+}
+
+/* Chart improvements for dark mode */
+html.dark .recharts-default-tooltip {
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+}
+
+html.dark .recharts-tooltip-label {
+  color: #f1f5f9 !important;
+}
+
+html.dark .recharts-tooltip-item {
+  color: #cbd5e1 !important;
+}
+
+html.dark .recharts-cartesian-grid line {
+  stroke: #334155;
+  opacity: 0.5;
+}
+
+html.dark .recharts-cartesian-axis-tick text {
+  fill: #94a3b8;
+}
+
+html.dark .recharts-cartesian-axis-line {
+  stroke: #475569;
+}
+
+/* Loading states */
+html.dark .animate-pulse {
+  animation: pulse-dark 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-dark {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Focus ring improvements */
+html.dark *:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Hover states with better feedback */
+html.dark .hover\:bg-gray-100:hover {
+  background-color: #334155;
+}
+
+html.dark .hover\:bg-gray-200:hover {
+  background-color: #475569;
+}
+
+html.dark .hover\:bg-blue-50:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+html.dark .hover\:bg-red-50:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+html.dark .hover\:bg-green-50:hover {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+/* Table zebra striping */
+html.dark tbody tr:nth-child(even) {
+  background-color: rgba(30, 41, 59, 0.5);
+}
+
+html.dark tbody tr:hover {
+  background-color: #334155;
+}
+
+/* Modal backdrop */
+html.dark .modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Smooth transitions for all theme-affected elements */
+html.dark * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Disable transitions during theme switch to prevent flashing */
+html.transitioning,
+html.transitioning * {
+  transition: none !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  html.dark {
+    --text-primary: #ffffff;
+    --text-secondary: #e5e7eb;
+    --border-color: #6b7280;
+  }
+  
+  html.dark input:focus,
+  html.dark select:focus,
+  html.dark textarea:focus {
+    outline-width: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  html.dark * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
