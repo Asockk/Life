@@ -234,17 +234,22 @@ const FixedModernEntryForm = ({
       'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
     };
     
-    const match = germanDate.match(/(\d+)\.?\s*(\w+)\s*(\d{4})?/);
+    // Verbesserte Regex um Jahr immer zu erfassen
+    const match = germanDate.match(/(\d+)\.\s*(\w+)\s*(\d{4})?/);
     if (match) {
       const day = match[1].padStart(2, '0');
       const monthName = match[2];
-      const year = match[3] || new Date().getFullYear();
+      const year = match[3] || new Date().getFullYear().toString();
       const month = months[monthName];
       
       if (month) {
-        return `${year}-${month}-${day}`;
+        const result = `${year}-${month}-${day}`;
+        console.log(`[germanDateToISO] Converting: "${germanDate}" => "${result}"`);
+        return result;
       }
     }
+    
+    console.warn(`[germanDateToISO] Failed to parse date: "${germanDate}"`);
     return '';
   };
 

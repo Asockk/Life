@@ -23,18 +23,38 @@ const convertToGermanDate = (entry) => {
 
   // Formatprüfung und Konvertierung
   let datumStr = entry.datum;
+  let hasYear = false;
+  let year = '';
+  
+  // Prüfe ob Jahr bereits vorhanden ist
+  const yearMatch = datumStr.match(/\b(20\d{2})\b/);
+  if (yearMatch) {
+    hasYear = true;
+    year = yearMatch[1];
+  }
   
   // Prüfe verschiedene Formate und konvertiere Monatsnamen
-  // Format "13. January, 2025"
-  if (datumStr.includes('.') && datumStr.includes(',')) {
+  // Format "13. January, 2025" oder "21. November 2024"
+  if (datumStr.includes('.') && (datumStr.includes(',') || hasYear)) {
     const parts = datumStr.split('.');
     if (parts.length >= 2) {
       const dayPart = parts[0].trim();
       let restPart = parts[1].trim();
       
-      // Jahr entfernen, falls vorhanden
+      // Jahr extrahieren und entfernen aus restPart
       if (restPart.includes(',')) {
-        restPart = restPart.split(',')[0].trim();
+        const monthYearParts = restPart.split(',');
+        restPart = monthYearParts[0].trim();
+        if (monthYearParts[1]) {
+          const possibleYear = monthYearParts[1].trim().match(/\b(20\d{2})\b/);
+          if (possibleYear) {
+            year = possibleYear[1];
+            hasYear = true;
+          }
+        }
+      } else if (hasYear) {
+        // Jahr direkt nach Monat (z.B. "November 2024")
+        restPart = restPart.replace(/\s*\b20\d{2}\b\s*/, '').trim();
       }
       
       // Englischen Monatsnamen zu deutschen konvertieren
@@ -45,7 +65,8 @@ const convertToGermanDate = (entry) => {
         }
       }
       
-      updatedEntry.datum = `${dayPart}. ${restPart}`;
+      // Formatiere mit Jahr
+      updatedEntry.datum = hasYear ? `${dayPart}. ${restPart} ${year}` : `${dayPart}. ${restPart}`;
     }
   } 
   // Format "January 13, 2025"
@@ -55,17 +76,26 @@ const convertToGermanDate = (entry) => {
       let monthPart = parts[0].trim();
       let dayPart = parts[1].trim();
       
-      // Komma oder Jahr entfernen
+      // Komma entfernen und Jahr extrahieren
       if (dayPart.includes(',')) {
         dayPart = dayPart.replace(',', '');
+      }
+      if (parts.length > 2 && parts[2].match(/\b20\d{2}\b/)) {
+        year = parts[2].trim();
+        hasYear = true;
       }
       
       // Englischen Monatsnamen zu deutschen konvertieren
       monthPart = monthTranslation[monthPart] || monthPart;
       
-      // In deutsches Format umwandeln: "13. Januar"
-      updatedEntry.datum = `${dayPart}. ${monthPart}`;
+      // In deutsches Format umwandeln
+      updatedEntry.datum = hasYear ? `${dayPart}. ${monthPart} ${year}` : `${dayPart}. ${monthPart}`;
     }
+  }
+  
+  // Wenn kein Jahr vorhanden ist, füge das aktuelle Jahr hinzu
+  if (!hasYear && !updatedEntry.datum.match(/\b20\d{2}\b/)) {
+    updatedEntry.datum = `${updatedEntry.datum} ${new Date().getFullYear()}`;
   }
   
   return updatedEntry;

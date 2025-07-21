@@ -21,8 +21,9 @@ import OfflineIndicator from './components/UI/OfflineIndicator';
 import { CriticalErrorBoundary } from './components/ErrorBoundary';
 
 // Lazy-loaded components
-const AdvancedStatistics = lazy(() => import('./components/Dashboard/AdvancedStatistics'));
-const BloodPressureTable = lazy(() => import('./components/Table/BloodPressureTableWrapper'));
+// Import directly to avoid ChunkLoadError
+import AdvancedStatistics from './components/Dashboard/AdvancedStatistics';
+import BloodPressureTable from './components/Table/BloodPressureTableWrapper';
 const ImportModal = lazy(() => import('./components/Forms/ImportModal'));
 const MedicalReportGenerator = lazy(() => import('./components/Reports/MedicalReportGenerator'));
 
@@ -171,23 +172,19 @@ const UltraModernBlutdruckTracker = () => {
       case 'stats':
         return (
           <CriticalErrorBoundary componentName="AdvancedStatistics">
-            <Suspense fallback={<LoadingFallback message="Lade Statistiken..." />}>
-              <AdvancedStatistics data={data} contextFactors={contextFactors} darkMode={darkMode} />
-            </Suspense>
+            <AdvancedStatistics data={data} contextFactors={contextFactors} darkMode={darkMode} />
           </CriticalErrorBoundary>
         );
         
       case 'table':
         return (
           <CriticalErrorBoundary componentName="BloodPressureTable">
-            <Suspense fallback={<LoadingFallback message="Lade Tabelle..." />}>
-              <BloodPressureTable 
-                data={data} 
-                onEdit={handleEdit} 
-                onDelete={deleteEntry}
-                darkMode={darkMode}
-              />
-            </Suspense>
+            <BloodPressureTable 
+              data={data} 
+              onEdit={handleEdit} 
+              onDelete={deleteEntry}
+              darkMode={darkMode}
+            />
           </CriticalErrorBoundary>
         );
         

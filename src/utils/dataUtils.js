@@ -371,19 +371,30 @@ function parseImportedDate(weekdayStr, dateStr) {
         }
       }
     } 
-    // Format: "9. Januar"
+    // Format: "9. Januar" oder "21. November 2024"
     else if (dateStr.includes('.') && dateStr.includes(' ')) {
-      const parts = dateStr.split('. ');
-      germanDay = parts[0].trim();
+      // Erste Möglichkeit: "21. November 2024" (mit Punkt und Space)
+      const regex = /(\d+)\.\s*(\w+)\s*(\d{4})?/;
+      const match = dateStr.match(regex);
       
-      // Zweiter Teil könnte "Januar 2025" sein
-      if (parts.length > 1) {
-        const monthParts = parts[1].split(' ');
-        germanMonth = monthParts[0].trim();
+      if (match) {
+        germanDay = match[1];
+        germanMonth = match[2];
+        year = match[3] || null;
+      } else {
+        // Fallback auf split-Methode
+        const parts = dateStr.split('. ');
+        germanDay = parts[0].trim();
         
-        // Jahreszahl suchen
-        if (monthParts.length > 1 && monthParts[1].match(/\d{4}/)) {
-          year = monthParts[1].trim();
+        // Zweiter Teil könnte "Januar 2025" sein
+        if (parts.length > 1) {
+          const monthParts = parts[1].split(' ');
+          germanMonth = monthParts[0].trim();
+          
+          // Jahreszahl suchen
+          if (monthParts.length > 1 && monthParts[1].match(/\d{4}/)) {
+            year = monthParts[1].trim();
+          }
         }
       }
     }
