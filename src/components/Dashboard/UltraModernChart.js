@@ -244,23 +244,152 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
         );
 
       case 'analysis':
+        // Neue Analyse-Ansicht: Kategorien-Verteilung und Trends
+        const categoryData = useMemo(() => {
+          const categories = {
+            'Optimal': { count: 0, color: '#22c55e' },
+            'Normal': { count: 0, color: '#3b82f6' },
+            'Hochnormal': { count: 0, color: '#f59e0b' },
+            'Hypertonie': { count: 0, color: '#ef4444' }
+          };
+          
+          // Zähle nur Einträge mit tatsächlichen Werten
+          enhancedData.forEach(item => {
+            const sys = item[`${prefix}Sys`];
+            const dia = item[`${prefix}Dia`];
+            
+            if (sys > 0 && dia > 0) {
+              if (sys < 120 && dia < 80) categories['Optimal'].count++;
+              else if (sys < 130 && dia < 85) categories['Normal'].count++;
+              else if (sys < 140 && dia < 90) categories['Hochnormal'].count++;
+              else categories['Hypertonie'].count++;
+            }
+          });
+          
+          // Konvertiere für Recharts
+          return Object.entries(categories)
+            .filter(([_, data]) => data.count > 0) // Nur Kategorien mit Werten
+            .map(([name, data]) => ({
+              name,
+              wert: data.count,
+              color: data.color
+            }));
+        }, [enhancedData, prefix]);
+        
+        // Variabilität berechnen (Standard-Abweichung)
+        const variabilityData = useMemo(() => {
+          const result = [];
+          const windowSize = 7; // 7-Tage-Fenster
+          
+          for (let i = windowSize - 1; i < enhancedData.length; i++) {
+            const window = enhancedData.slice(i - windowSize + 1, i + 1);
+            const sysValues = window
+              .map(d => d[`${prefix}Sys`])
+              .filter(v => v > 0);
+            const diaValues = window
+              .map(d => d[`${prefix}Dia`])
+              .filter(v => v > 0);
+            
+            if (sysValues.length >= 3) { // Mindestens 3 Werte für sinnvolle Berechnung
+              const avgSys = sysValues.reduce((a, b) => a + b, 0) / sysValues.length;
+              const avgDia = diaValues.reduce((a, b) => a + b, 0) / diaValues.length;
+              
+              const sysVariability = Math.sqrt(
+                sysValues.reduce((sum, val) => sum + Math.pow(val - avgSys, 2), 0) / sysValues.length
+              );
+              const diaVariability = Math.sqrt(
+                diaValues.reduce((sum, val) => sum + Math.pow(val - avgDia, 2), 0) / diaValues.length
+              );
+              
+              result.push({
+                ...enhancedData[i],
+                sysVariability: Math.round(sysVariability),
+                diaVariability: Math.round(diaVariability),
+                riskScore: Math.round((sysVariability + diaVariability) / 2)
+              });
+            } else {
+              result.push({
+                ...enhancedData[i],
+                sysVariability: null,
+                diaVariability: null,
+                riskScore: null
+              });
+            }
+          }
+          
+          return result;
+        }, [enhancedData, prefix]);
+        
         return (
-          <ComposedChart data={enhancedData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-            <XAxis dataKey="tag" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-            <YAxis yAxisId="left" domain={[0, 100]} stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-            <YAxis yAxisId="right" orientation="right" domain={[40, 100]} stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-            <Tooltip content={<FuturisticTooltip />} />
-            <Bar yAxisId="left" dataKey="healthScore" fill="url(#healthGradient)" radius={[8, 8, 0, 0]} />
-            <Line yAxisId="right" type="monotone" dataKey="map" stroke="#B10DC9" strokeWidth={2} connectNulls={false} />
-            <Line yAxisId="right" type="monotone" dataKey="pp" stroke="#FF851B" strokeWidth={2} connectNulls={false} />
-            <defs>
-              <linearGradient id="healthGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset={off} stopColor="#2ECC40" stopOpacity={1} />
-                <stop offset={off} stopColor="#FF4136" stopOpacity={1} />
-              </linearGradient>
-            </defs>
-          </ComposedChart>
+          <div className="space-y-4">
+            {/* Kategorien-Verteilung */}
+            <div className="glass-card p-4">
+              <h4 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">
+                Verteilung der Messwerte
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                {categoryData.map(cat => (
+                  <div key={cat.name} className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: cat.color }}>
+                      {cat.name}
+                    </span>
+                    <span className="font-bold text-lg" style={{ color: cat.color }}>
+                      {cat.wert}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Variabilität Chart */}
+            <div>
+              <h4 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                Blutdruck-Variabilität (7-Tage)
+              </h4>
+              <LineChart data={variabilityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                <XAxis dataKey="tag" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                <YAxis domain={[0, 'auto']} stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                <Tooltip 
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || !payload.length) return null;
+                    const data = payload[0].payload;
+                    return (
+                      <div className="glass-card p-3">
+                        <p className="font-semibold text-sm">{label}</p>
+                        <p className="text-xs mt-1">
+                          Sys-Variabilität: {data.sysVariability || 'k.A.'} mmHg
+                        </p>
+                        <p className="text-xs">
+                          Dia-Variabilität: {data.diaVariability || 'k.A.'} mmHg
+                        </p>
+                        <p className="text-xs font-semibold mt-1" style={{ 
+                          color: data.riskScore > 15 ? '#ef4444' : '#22c55e' 
+                        }}>
+                          Risiko-Score: {data.riskScore || 'k.A.'}
+                        </p>
+                      </div>
+                    );
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="riskScore" 
+                  stroke="#8b5cf6" 
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  connectNulls={false}
+                />
+                <ReferenceLine 
+                  y={15} 
+                  stroke="#ef4444" 
+                  strokeDasharray="5 5" 
+                  label={{ value: "Erhöhtes Risiko", position: "right" }}
+                />
+              </LineChart>
+            </div>
+          </div>
         );
 
       default: // 'all'
