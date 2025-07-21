@@ -411,7 +411,8 @@ const BlutdruckTracker = () => {
             <Suspense fallback={<LoadingFallback message="Lade Statistiken..." />}>
               <AdvancedStatistics 
                 data={data} 
-                contextFactors={contextFactors} 
+                contextFactors={contextFactors}
+                darkMode={darkMode}
               />
             </Suspense>
           </CriticalErrorBoundary>

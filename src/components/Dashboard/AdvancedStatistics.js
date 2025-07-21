@@ -761,15 +761,15 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                       <div>
                         <p className={`text-sm font-medium mb-1 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Morgen-Abend-Vergleich:</p>
-                        <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-2 rounded">
-                          <div className="border-r border-gray-200 pr-2">
-                            <p><span className="font-medium">Morgens:</span> {dayNightAnalysis.avgMorning.sys}/{dayNightAnalysis.avgMorning.dia} mmHg</p>
+                        <div className={`grid grid-cols-2 gap-2 text-sm p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                          <div className={`border-r pr-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                            <p className={darkMode ? 'text-gray-300' : 'text-gray-700'}><span className="font-medium">Morgens:</span> {dayNightAnalysis.avgMorning.sys}/{dayNightAnalysis.avgMorning.dia} mmHg</p>
                           </div>
                           <div>
-                            <p><span className="font-medium">Abends:</span> {dayNightAnalysis.avgEvening.sys}/{dayNightAnalysis.avgEvening.dia} mmHg</p>
+                            <p className={darkMode ? 'text-gray-300' : 'text-gray-700'}><span className="font-medium">Abends:</span> {dayNightAnalysis.avgEvening.sys}/{dayNightAnalysis.avgEvening.dia} mmHg</p>
                           </div>
                         </div>
-                        <p className="text-sm mt-1">
+                        <p className={`text-sm mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                           <span className="font-medium">Differenz:</span> 
                           <span className={dayNightAnalysis.timeDiff.sys > 0 ? 'text-red-600' : 'text-blue-600'}>
                             {' '}{dayNightAnalysis.timeDiff.sys > 0 ? '+' : ''}{dayNightAnalysis.timeDiff.sys}/
@@ -780,17 +780,20 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
                     </div>
                   </div>
                   
-                  <p className="text-sm font-medium mb-2">Durchschnittswerte im Tagesverlauf:</p>
+                  <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Durchschnittswerte im Tagesverlauf:</p>
                   <div className="h-60 mb-4">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={dayNightAnalysis.chartData}
                         margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis domain={[60, 180]} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                        <XAxis dataKey="name" tick={{ fill: chartTheme.text }} />
+                        <YAxis domain={[60, 180]} tick={{ fill: chartTheme.text }} />
                         <Tooltip 
+                          contentStyle={chartTheme.tooltip.contentStyle}
+                          labelStyle={chartTheme.tooltip.labelStyle}
+                          itemStyle={chartTheme.tooltip.itemStyle}
                           formatter={(value) => [`${value} mmHg`, '']}
                           labelFormatter={(label) => `${label}-Messung`}
                         />
@@ -804,17 +807,20 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
                   {/* Täglicher Verlauf nur anzeigen, wenn genügend Datenpunkte */}
                   {dayNightAnalysis.dailyPatternData.length > 3 && (
                     <>
-                      <p className="text-sm font-medium mb-2">Morgen-Abend-Differenzen (Systolisch):</p>
+                      <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Morgen-Abend-Differenzen (Systolisch):</p>
                       <div className="h-60">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart
                             data={dayNightAnalysis.dailyPatternData}
                             margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                           >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="datum" tick={{fontSize: 10}} />
-                            <YAxis domain={[-40, 40]} />
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                            <XAxis dataKey="datum" tick={{fontSize: 10, fill: chartTheme.text}} />
+                            <YAxis domain={[-40, 40]} tick={{ fill: chartTheme.text }} />
                             <Tooltip 
+                              contentStyle={chartTheme.tooltip.contentStyle}
+                              labelStyle={chartTheme.tooltip.labelStyle}
+                              itemStyle={chartTheme.tooltip.itemStyle}
                               formatter={(value) => [`${value > 0 ? '+' : ''}${value} mmHg`, '']}
                               labelFormatter={(label) => `${label}`}
                             />
@@ -839,7 +845,7 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
         </div>
         
         {/* 2. Wochentagsanalyse */}
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div 
             className="flex items-center justify-between p-4 cursor-pointer"
             onClick={() => toggleSection('weekday')}
@@ -847,8 +853,8 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
             <div className="flex items-center">
               <Calendar size={22} className="text-green-600 mr-3" />
               <div>
-                <h3 className="font-medium">Wochentagsanalyse</h3>
-                <p className="text-sm text-gray-600 mt-0.5">
+                <h3 className={`font-medium ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>Wochentagsanalyse</h3>
+                <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                   {!weekdayAnalysis || !weekdayAnalysis.hasEnoughData 
                     ? "Nicht genügend Daten verfügbar" 
                     : "Erkennt Muster an verschiedenen Wochentagen"}
@@ -872,8 +878,8 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
                 </div>
               ) : (
                 <>
-                  <div className="p-3 bg-blue-50 rounded-md mb-3">
-                    <p className="text-sm">{weekdayAnalysis.interpretation}</p>
+                  <div className={`p-3 rounded-md mb-3 ${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                    <p className={`text-sm ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>{weekdayAnalysis.interpretation}</p>
                   </div>
                   
                   <div className="mt-3 grid grid-cols-7 gap-1 text-xs mb-4">
@@ -892,17 +898,20 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
                     ))}
                   </div>
                   
-                  <p className="text-sm font-medium mb-2">Blutdruck nach Wochentagen:</p>
+                  <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Blutdruck nach Wochentagen:</p>
                   <div className="h-60">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={weekdayAnalysis.weekdayData.sort((a, b) => a.sort - b.sort)}
                         margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="shortName" />
-                        <YAxis domain={[60, 180]} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                        <XAxis dataKey="shortName" tick={{ fill: chartTheme.text }} />
+                        <YAxis domain={[60, 180]} tick={{ fill: chartTheme.text }} />
                         <Tooltip 
+                          contentStyle={chartTheme.tooltip.contentStyle}
+                          labelStyle={chartTheme.tooltip.labelStyle}
+                          itemStyle={chartTheme.tooltip.itemStyle}
                           formatter={(value, name) => [
                             `${value} mmHg`, 
                             name === 'morgenSys' ? 'Morgen Systolisch' : 
@@ -925,7 +934,7 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
         </div>
         
         {/* 3. Jahreszeitliche Schwankungen */}
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className={`border rounded-lg overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div 
             className="flex items-center justify-between p-4 cursor-pointer"
             onClick={() => toggleSection('seasonal')}
@@ -933,8 +942,8 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
             <div className="flex items-center">
               <TrendingUp size={22} className="text-orange-600 mr-3" />
               <div>
-                <h3 className="font-medium">Jahreszeitliche Schwankungen</h3>
-                <p className="text-sm text-gray-600 mt-0.5">
+                <h3 className={`font-medium ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>Jahreszeitliche Schwankungen</h3>
+                <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                   {!seasonalAnalysis?.hasEnoughData 
                     ? "Nicht genügend langfristige Daten" 
                     : `Daten aus ${seasonalAnalysis.monthsWithData} von 12 Monaten verfügbar`}
@@ -955,24 +964,27 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
                 </div>
               ) : (
                 <>
-                  <div className="p-3 bg-blue-50 rounded-md mb-3">
-                    <p className="text-sm">{seasonalAnalysis.interpretation}</p>
+                  <div className={`p-3 rounded-md mb-3 ${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                    <p className={`text-sm ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>{seasonalAnalysis.interpretation}</p>
                   </div>
                   
-                  <p className="text-sm font-medium mb-2">Monatlicher Blutdruckverlauf:</p>
+                  <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Monatlicher Blutdruckverlauf:</p>
                   <div className="h-60 mb-4">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={seasonalAnalysis.monthlyData}
                         margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
                         <XAxis 
                           dataKey="displayName" 
-                          tick={{fontSize: 10}}
+                          tick={{fontSize: 10, fill: chartTheme.text}}
                         />
-                        <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
+                        <YAxis domain={['dataMin - 5', 'dataMax + 5']} tick={{ fill: chartTheme.text }} />
                         <Tooltip 
+                          contentStyle={chartTheme.tooltip.contentStyle}
+                          labelStyle={chartTheme.tooltip.labelStyle}
+                          itemStyle={chartTheme.tooltip.itemStyle}
                           formatter={(value) => [`${value} mmHg`, '']}
                         />
                         <Legend />
@@ -991,17 +1003,20 @@ const AdvancedStatistics = ({ data, contextFactors, darkMode }) => {
                   
                   {seasonalAnalysis.seasonalData.length > 0 && (
                     <>
-                      <p className="text-sm font-medium mb-2">Jahreszeitliche Trends:</p>
+                      <p className={`text-sm font-medium mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Jahreszeitliche Trends:</p>
                       <div className="h-60">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart
                             data={seasonalAnalysis.seasonalData}
                             margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                           >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                            <XAxis dataKey="name" tick={{ fill: chartTheme.text }} />
+                            <YAxis domain={['dataMin - 5', 'dataMax + 5']} tick={{ fill: chartTheme.text }} />
                             <Tooltip 
+                              contentStyle={chartTheme.tooltip.contentStyle}
+                              labelStyle={chartTheme.tooltip.labelStyle}
+                              itemStyle={chartTheme.tooltip.itemStyle}
                               formatter={(value) => [`${value} mmHg`, '']}
                             />
                             <Legend />
