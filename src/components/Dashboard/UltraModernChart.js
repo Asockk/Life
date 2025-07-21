@@ -152,12 +152,18 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
     const dia = data[`${prefix}Dia`];
     const pulse = data[`${prefix}Puls`];
     const healthScore = data.healthScore;
+    
+    // Vollständiges Datum mit Jahr
+    const fullDate = data.datum || label;
 
     return (
       <div className="glass-card p-4 min-w-[200px]">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+        <div className="flex flex-col mb-3">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
             {label}
+          </span>
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            {fullDate}
           </span>
           <div className="flex items-center gap-1">
             <Heart size={12} className="text-red-500" />
@@ -324,75 +330,203 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
         );
 
       case 'analysis':
-        // Neue Analyse-Ansicht: Kategorien-Verteilung und Trends
+        // Neue Analyse-Ansicht ohne Überlappungen
+        const analysisData = enhancedData.map(item => {
+          const sys = item[`${prefix}Sys`];
+          const dia = item[`${prefix}Dia`];
+          const pulse = item[`${prefix}Puls`];
+          
+          // Berechne nur wenn Werte vorhanden
+          if (!sys || !dia || sys === 0 || dia === 0) {
+            return {
+              ...item,
+              category: null,
+              map: null,
+              pp: null,
+              variability: null
+            };
+          }
+          
+          // Kategorie bestimmen
+          let category;
+          let categoryValue;
+          if (sys < 120 && dia < 80) {
+            category = 'Optimal';
+            categoryValue = 1;
+          } else if (sys < 130 && dia < 85) {
+            category = 'Normal';
+            categoryValue = 2;
+          } else if (sys < 140 && dia < 90) {
+            category = 'Hochnormal';
+            categoryValue = 3;
+          } else {
+            category = 'Hypertonie';
+            categoryValue = 4;
+          }
+          
+          // MAP (Mean Arterial Pressure)
+          const map = Math.round(dia + (sys - dia) / 3);
+          
+          // PP (Pulse Pressure)
+          const pp = sys - dia;
+          
+          // Variabilität zum Vortag
+          const prevIndex = enhancedData.indexOf(item) - 1;
+          let variability = 0;
+          if (prevIndex >= 0) {
+            const prevSys = enhancedData[prevIndex][`${prefix}Sys`];
+            const prevDia = enhancedData[prevIndex][`${prefix}Dia`];
+            if (prevSys && prevDia) {
+              variability = Math.abs(sys - prevSys) + Math.abs(dia - prevDia);
+            }
+          }
+          
+          return {
+            ...item,
+            category,
+            categoryValue,
+            map,
+            pp,
+            variability
+          };
+        });
+        
+        // Farbschema für Kategorien
+        const getCategoryColor = (category) => {
+          const colors = {
+            'Optimal': darkMode ? '#4ade80' : '#22c55e',
+            'Normal': darkMode ? '#60a5fa' : '#3b82f6',
+            'Hochnormal': darkMode ? '#fbbf24' : '#f59e0b',
+            'Hypertonie': darkMode ? '#f87171' : '#ef4444'
+          };
+          return colors[category] || '#9ca3af';
+        };
+        
         return (
-          <div className="space-y-4">
-            {/* Kategorien-Verteilung */}
-            <div className="glass-card p-4">
-              <h4 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">
-                Verteilung der Messwerte
+          <div className="space-y-2">
+            {/* Kategorie-Übersicht */}
+            <div className="glass-card p-2">
+              <h4 className="text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">
+                Blutdruck-Kategorien
               </h4>
-              <div className="grid grid-cols-2 gap-3">
-                {categoryData.map(cat => (
-                  <div key={cat.name} className="flex items-center justify-between">
-                    <span className="text-sm" style={{ color: cat.color }}>
-                      {cat.name}
-                    </span>
-                    <span className="font-bold text-lg" style={{ color: cat.color }}>
-                      {cat.wert}
-                    </span>
-                  </div>
-                ))}
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={analysisData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                    <XAxis dataKey="tag" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                    <YAxis 
+                      domain={[0, 5]} 
+                      ticks={[1, 2, 3, 4]}
+                      tickFormatter={(value) => {
+                        const labels = { 1: 'Optimal', 2: 'Normal', 3: 'Hoch', 4: 'Hypertonie' };
+                        return labels[value] || '';
+                      }}
+                      stroke={darkMode ? '#9ca3af' : '#6b7280'} 
+                    />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        const data = payload[0].payload;
+                        if (!data.category) return null;
+                        
+                        return (
+                          <div className="glass-card p-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+                            <p className="text-xs font-semibold">{data.datum}</p>
+                            <p className="text-xs mt-1" style={{ color: getCategoryColor(data.category) }}>
+                              {data.category}
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              {data[`${prefix}Sys`]}/{data[`${prefix}Dia`]} mmHg
+                            </p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Area 
+                      type="stepAfter" 
+                      dataKey="categoryValue" 
+                      stroke={darkMode ? '#60a5fa' : '#3b82f6'}
+                      fill={darkMode ? '#60a5fa' : '#3b82f6'}
+                      fillOpacity={0.3}
+                      strokeWidth={2}
+                      connectNulls={false}
+                    />
+                    {/* Referenzlinien für Kategorien */}
+                    <ReferenceLine y={1} stroke="#4ade80" strokeDasharray="3 3" opacity={0.5} />
+                    <ReferenceLine y={2} stroke="#60a5fa" strokeDasharray="3 3" opacity={0.5} />
+                    <ReferenceLine y={3} stroke="#fbbf24" strokeDasharray="3 3" opacity={0.5} />
+                    <ReferenceLine y={4} stroke="#f87171" strokeDasharray="3 3" opacity={0.5} />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
             
-            {/* Variabilität Chart */}
-            <div>
-              <h4 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                Blutdruck-Variabilität (7-Tage)
+            {/* MAP und Pulsdruck */}
+            <div className="glass-card p-2">
+              <h4 className="text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">
+                MAP & Pulsdruck
               </h4>
-              <LineChart data={variabilityData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-                <XAxis dataKey="tag" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-                <YAxis domain={[0, 'auto']} stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-                <Tooltip 
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload || !payload.length) return null;
-                    const data = payload[0].payload;
-                    return (
-                      <div className="glass-card p-3">
-                        <p className="font-semibold text-sm">{label}</p>
-                        <p className="text-xs mt-1">
-                          Sys-Variabilität: {data.sysVariability || 'k.A.'} mmHg
-                        </p>
-                        <p className="text-xs">
-                          Dia-Variabilität: {data.diaVariability || 'k.A.'} mmHg
-                        </p>
-                        <p className="text-xs font-semibold mt-1" style={{ 
-                          color: data.riskScore > 15 ? '#ef4444' : '#22c55e' 
-                        }}>
-                          Risiko-Score: {data.riskScore || 'k.A.'}
-                        </p>
-                      </div>
-                    );
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="riskScore" 
-                  stroke="#8b5cf6" 
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  connectNulls={false}
-                />
-                <ReferenceLine 
-                  y={15} 
-                  stroke="#ef4444" 
-                  strokeDasharray="5 5" 
-                  label={{ value: "Erhöhtes Risiko", position: "right" }}
-                />
-              </LineChart>
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={analysisData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                    <XAxis dataKey="tag" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                    <YAxis domain={[40, 120]} stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        const data = payload[0].payload;
+                        
+                        return (
+                          <div className="glass-card p-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+                            <p className="text-xs font-semibold mb-1">{data.datum}</p>
+                            {data.map && (
+                              <>
+                                <p className="text-xs mt-1">
+                                  <span className="text-gray-600 dark:text-gray-400">MAP: </span>
+                                  <span style={{ color: darkMode ? '#c084fc' : '#9333ea' }}>
+                                    {data.map} mmHg
+                                  </span>
+                                </p>
+                                <p className="text-xs">
+                                  <span className="text-gray-600 dark:text-gray-400">Pulsdruck: </span>
+                                  <span style={{ color: darkMode ? '#fbbf24' : '#f59e0b' }}>
+                                    {data.pp} mmHg
+                                  </span>
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        );
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="map" 
+                      stroke={darkMode ? '#c084fc' : '#9333ea'}
+                      strokeWidth={2.5}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      connectNulls={false}
+                      name="MAP"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="pp" 
+                      stroke={darkMode ? '#fbbf24' : '#f59e0b'}
+                      strokeWidth={2.5}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      connectNulls={false}
+                      name="Pulsdruck"
+                    />
+                    <ReferenceLine y={70} stroke="#4ade80" strokeDasharray="5 5" opacity={0.5} />
+                    <ReferenceLine y={107} stroke="#f87171" strokeDasharray="5 5" opacity={0.5} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         );
