@@ -64,14 +64,6 @@ const BloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
   const getSortedData = (dataArray, isDescending) => {
     
     return [...dataArray].sort((a, b) => {
-      // Vergleiche Jahre zuerst
-      const yearA = extractYear(a.datum);
-      const yearB = extractYear(b.datum);
-      
-      if (yearA !== yearB) {
-        return isDescending ? yearB - yearA : yearA - yearB;
-      }
-      
       // Deutsche Monatsnamen in numerische Werte
       const months = {
         'Januar': 0, 'Februar': 1, 'März': 2, 'April': 3, 
@@ -83,16 +75,22 @@ const BloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
       const parseDate = (str) => {
         if (!str) return new Date(0);
         
-        let day, month, year = yearA;
+        let day, month, year;
         
-        // Format: "1. Januar 2023"
+        // Extrahiere Jahr aus dem String
+        const yearMatch = str.match(/\b(20\d{2})\b/);
+        year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+        
+        // Format: "21. November 2024" oder "1. Januar 2023"
         if (str.includes('.')) {
           const parts = str.split('. ');
           day = parseInt(parts[0]);
           
           if (parts.length > 1) {
-            const monthParts = parts[1].split(' ');
-            month = monthParts[0].trim();
+            // Extrahiere Monat (kann "November 2024" oder nur "November" sein)
+            const monthAndYear = parts[1].trim();
+            const monthName = monthAndYear.split(' ')[0].trim();
+            month = monthName;
           }
         } 
         // Format: "Januar 1 2023"
@@ -104,8 +102,14 @@ const BloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
           return new Date(0);
         }
         
-        if (months[month] === undefined) return new Date(0);
-        return new Date(year, months[month], day);
+        if (months[month] === undefined) {
+          console.warn(`[BloodPressureTable] Unbekannter Monat: "${month}" in Datum "${str}"`);
+          return new Date(0);
+        }
+        
+        const result = new Date(year, months[month], day);
+        // console.log(`[BloodPressureTable] Parsing: "${str}" => ${result.toISOString()}`);
+        return result;
       };
       
       const dateA = parseDate(a.datum);

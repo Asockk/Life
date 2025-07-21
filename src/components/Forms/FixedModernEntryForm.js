@@ -244,12 +244,12 @@ const FixedModernEntryForm = ({
       
       if (month) {
         const result = `${year}-${month}-${day}`;
-        console.log(`[germanDateToISO] Converting: "${germanDate}" => "${result}"`);
+        // console.log(`[germanDateToISO] Converting: "${germanDate}" => "${result}"`);
         return result;
       }
     }
     
-    console.warn(`[germanDateToISO] Failed to parse date: "${germanDate}"`);
+    // console.warn(`[germanDateToISO] Failed to parse date: "${germanDate}"`);
     return '';
   };
 
