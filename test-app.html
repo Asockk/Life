@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blutdruck Tracker - Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Blutdruck Tracker - Test & Debug</h1>
+    
+    <div class="section">
+        <h2>IndexedDB Status</h2>
+        <div id="db-status" class="log">Checking...</div>
+        <button onclick="checkDatabase()">Check Database</button>
+        <button onclick="clearDatabase()">Clear Database</button>
+    </div>
+    
+    <div class="section">
+        <h2>Test Add Entry</h2>
+        <button onclick="addTestEntry()">Add Test Entry</button>
+        <div id="add-result" class="log"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Current Data</h2>
+        <button onclick="loadData()">Load Data</button>
+        <div id="data-display" class="log"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Console Log</h2>
+        <div id="console-log" class="log"></div>
+    </div>
+
+    <script>
+        const DB_NAME = 'BlutdruckTrackerDB';
+        const STORE_NAME = 'messungen';
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        async function checkDatabase() {
+            try {
+                const db = await openDB();
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const count = await getCount(store);
+                
+                document.getElementById('db-status').textContent = 
+                    `Database: OK\nStore: ${STORE_NAME}\nEntries: ${count}`;
+                log(`Database check: ${count} entries found`, 'success');
+                
+                db.close();
+            } catch (error) {
+                document.getElementById('db-status').textContent = `Error: ${error.message}`;
+                log(`Database error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function clearDatabase() {
+            if (!confirm('Really clear all data?')) return;
+            
+            try {
+                const db = await openDB();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                await clearStore(store);
+                
+                log('Database cleared', 'success');
+                db.close();
+                checkDatabase();
+            } catch (error) {
+                log(`Clear error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function addTestEntry() {
+            const entry = {
+                id: `test-${Date.now()}`,
+                datum: new Date().toLocaleDateString('de-DE', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                }),
+                tag: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date().getDay()],
+                morgenSys: 120 + Math.floor(Math.random() * 20),
+                morgenDia: 70 + Math.floor(Math.random() * 15),
+                morgenPuls: 60 + Math.floor(Math.random() * 20),
+                abendSys: 125 + Math.floor(Math.random() * 20),
+                abendDia: 75 + Math.floor(Math.random() * 15),
+                abendPuls: 65 + Math.floor(Math.random() * 20),
+                notizen: 'Test entry created at ' + new Date().toLocaleTimeString()
+            };
+            
+            try {
+                const db = await openDB();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                await addToStore(store, entry);
+                
+                document.getElementById('add-result').textContent = 
+                    'Added: ' + JSON.stringify(entry, null, 2);
+                log('Test entry added successfully', 'success');
+                
+                db.close();
+                loadData();
+            } catch (error) {
+                log(`Add error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadData() {
+            try {
+                const db = await openDB();
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const data = await getAllFromStore(store);
+                
+                document.getElementById('data-display').textContent = 
+                    JSON.stringify(data, null, 2);
+                log(`Loaded ${data.length} entries`, 'success');
+                
+                db.close();
+            } catch (error) {
+                log(`Load error: ${error.message}`, 'error');
+            }
+        }
+        
+        // IndexedDB Helper Functions
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                
+                request.onerror = () => reject(new Error('Failed to open database'));
+                
+                request.onsuccess = (event) => {
+                    resolve(event.target.result);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+        
+        function getCount(store) {
+            return new Promise((resolve, reject) => {
+                const request = store.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function clearStore(store) {
+            return new Promise((resolve, reject) => {
+                const request = store.clear();
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function addToStore(store, data) {
+            return new Promise((resolve, reject) => {
+                const request = store.add(data);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        function getAllFromStore(store) {
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        // Initial check
+        checkDatabase();
+    </script>
+</body>
+</html>
