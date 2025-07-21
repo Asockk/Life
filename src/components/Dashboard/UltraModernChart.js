@@ -192,7 +192,8 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               fill="url(#sysGradient)"
               strokeWidth={3}
               animationDuration={1500}
-              dot={<AnimatedDot />}
+              dot={false}
+              activeDot={<AnimatedDot />}
               connectNulls={false}
             />
             <Area 
@@ -203,7 +204,8 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               fill="url(#diaGradient)"
               strokeWidth={3}
               animationDuration={1500}
-              dot={<AnimatedDot />}
+              dot={false}
+              activeDot={<AnimatedDot />}
               connectNulls={false}
             />
             <ReferenceLine y={120} stroke="#2ECC40" strokeDasharray="5 5" />
@@ -232,7 +234,8 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               fill="url(#pulseGradient)"
               strokeWidth={3}
               animationDuration={1500}
-              dot={{ r: 4, fill: '#2ECC40' }}
+              dot={false}
+              activeDot={{ r: 4, fill: '#2ECC40' }}
               connectNulls={false}
             />
             <ReferenceLine y={60} stroke="#0074D9" strokeDasharray="5 5" label="Normal" />
@@ -271,8 +274,9 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               type="monotone" 
               dataKey={`${prefix}Sys`} 
               stroke="#FF4136" 
-              strokeWidth={3}
-              dot={{ r: 4 }}
+              strokeWidth={2.5}
+              dot={false}
+              activeDot={{ r: 4 }}
               animationDuration={1500}
               connectNulls={false}
             />
@@ -280,8 +284,9 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               type="monotone" 
               dataKey={`${prefix}Dia`} 
               stroke="#0074D9" 
-              strokeWidth={3}
-              dot={{ r: 4 }}
+              strokeWidth={2.5}
+              dot={false}
+              activeDot={{ r: 4 }}
               animationDuration={1500}
               connectNulls={false}
             />
@@ -290,7 +295,8 @@ const UltraModernChart = ({ data, viewType, avgValues, darkMode = false }) => {
               dataKey={`${prefix}Puls`} 
               stroke="#2ECC40" 
               strokeWidth={2}
-              dot={{ r: 3 }}
+              dot={false}
+              activeDot={{ r: 3 }}
               animationDuration={1500}
               connectNulls={false}
             />
