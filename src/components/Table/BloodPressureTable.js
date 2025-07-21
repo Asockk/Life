@@ -53,14 +53,15 @@ const BloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
     return () => clearTimeout(timer);
   }, []);
   
+  // Extrahiert das Jahr aus einem Datumsstring
+  const extractYear = (dateStr) => {
+    if (!dateStr) return new Date().getFullYear();
+    const yearMatch = dateStr.match(/\b(20\d{2})\b/);
+    return yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+  };
+
   // Sortierte Daten erhalten
   const getSortedData = (dataArray, isDescending) => {
-    // Extrahiert das Jahr aus einem Datumsstring
-    const extractYear = (dateStr) => {
-      if (!dateStr) return new Date().getFullYear();
-      const yearMatch = dateStr.match(/\b(20\d{2})\b/);
-      return yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
-    };
     
     return [...dataArray].sort((a, b) => {
       // Vergleiche Jahre zuerst
@@ -406,7 +407,13 @@ const BloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
               <Calendar size={16} className={darkMode ? "text-gray-400" : "text-gray-500"} />
-              <span className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{entry.tag}, {entry.datum}</span>
+              <span className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                {entry.tag}, {entry.datum}
+                {/* Jahr anzeigen, falls nicht bereits im Datum enthalten */}
+                {!entry.datum.match(/\b20\d{2}\b/) && extractYear(entry.datum) !== new Date().getFullYear() && 
+                  ` ${extractYear(entry.datum)}`
+                }
+              </span>
             </div>
           </div>
           
@@ -540,7 +547,13 @@ const BloodPressureTable = ({ data, onEdit, onDelete, darkMode = true }) => {
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className={`text-sm font-medium ${
                       darkMode ? 'text-gray-200' : 'text-gray-900'
-                    }`}>{entry.tag}, {entry.datum}</div>
+                    }`}>
+                      {entry.tag}, {entry.datum}
+                      {/* Jahr anzeigen, falls nicht bereits im Datum enthalten */}
+                      {!entry.datum.match(/\b20\d{2}\b/) && extractYear(entry.datum) !== new Date().getFullYear() && 
+                        ` ${extractYear(entry.datum)}`
+                      }
+                    </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-center">
                     {entry.morgenSys > 0 && entry.morgenDia > 0 ? (
