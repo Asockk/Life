@@ -1,0 +1,274 @@
+/* Mobile Touch-Target Optimizations */
+/* Minimum touch target size: 48x48px according to WCAG 2.1 */
+
+/* Global button enhancements for mobile */
+@media (max-width: 768px) {
+  /* All buttons should be at least 48px tall */
+  button,
+  .btn,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 48px;
+    min-width: 48px;
+    touch-action: manipulation; /* Prevents double-tap zoom */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Increase clickable area for small buttons */
+  button:not(.no-padding-enhance)::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    bottom: -8px;
+    left: -8px;
+  }
+
+  /* Form inputs need larger touch targets */
+  input[type="text"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Checkbox and radio button enhancements */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+  }
+
+  /* Labels should have larger clickable areas */
+  label {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    cursor: pointer;
+    padding: 8px 0;
+  }
+
+  /* Icon buttons need padding for touch */
+  .icon-button {
+    padding: 12px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  /* Table rows should be tappable */
+  tr[onclick],
+  tr[data-clickable="true"] {
+    min-height: 48px;
+  }
+
+  td {
+    padding: 12px 8px;
+  }
+
+  /* Navigation items */
+  nav a,
+  .nav-item {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+  }
+
+  /* Dropdown items */
+  .dropdown-item,
+  select option {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  /* Close buttons in modals */
+  .close-button,
+  [aria-label="Close"],
+  [aria-label="Schließen"] {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+
+  /* Swipeable elements need larger touch areas */
+  .swipeable {
+    padding: 16px 0;
+  }
+
+  /* Tab buttons */
+  .tab-button {
+    min-height: 48px;
+    padding: 12px 20px;
+  }
+
+  /* Floating Action Button */
+  .fab {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ensure proper spacing between interactive elements */
+  .button-group > * + * {
+    margin-left: 8px;
+  }
+
+  /* Cards should have sufficient padding */
+  .card {
+    padding: 16px;
+  }
+
+  /* List items that are clickable */
+  .list-item[onclick],
+  .clickable-list-item {
+    min-height: 56px;
+    padding: 16px;
+  }
+}
+
+/* Thumb-zone optimization for one-handed use */
+@media (max-width: 428px) { /* iPhone Pro Max width */
+  /* Primary actions in bottom 60% of screen */
+  .primary-action {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 40px);
+    max-width: 380px;
+  }
+
+  /* Bottom navigation adjustments */
+  .bottom-nav {
+    height: 64px;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Adjust content padding to account for fixed elements */
+  .main-content {
+    padding-bottom: 120px; /* Space for bottom nav + FAB */
+  }
+}
+
+/* Accessibility improvements for touch */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover states on touch devices */
+  button:hover,
+  a:hover {
+    background-color: inherit;
+  }
+
+  /* Add active states for better feedback */
+  button:active,
+  a:active,
+  .clickable:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+
+  /* Ensure focus states are visible */
+  *:focus {
+    outline: 2px solid #007AFF;
+    outline-offset: 2px;
+  }
+}
+
+/* iOS-specific optimizations */
+@supports (-webkit-touch-callout: none) {
+  /* Prevent text selection on long press */
+  button,
+  a,
+  .clickable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+  }
+
+  /* Smooth scrolling */
+  .scrollable {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Safe area adjustments */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Performance optimizations */
+@media (max-width: 768px) {
+  /* Reduce animations on mobile for better performance */
+  * {
+    animation-duration: 0.2s !important;
+    transition-duration: 0.2s !important;
+  }
+
+  /* Hardware acceleration for smooth scrolling */
+  .scrollable {
+    transform: translateZ(0);
+    will-change: scroll-position;
+  }
+
+  /* Optimize repaints for fixed elements */
+  .fixed,
+  [position="fixed"] {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+}
+
+/* Haptic feedback enhancement */
+.haptic-light {
+  transition: all 0.1s ease;
+}
+
+.haptic-light:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.haptic-medium {
+  transition: all 0.15s ease;
+}
+
+.haptic-medium:active {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+.haptic-heavy {
+  transition: all 0.2s ease;
+}
+
+.haptic-heavy:active {
+  transform: scale(0.92);
+  opacity: 0.7;
+}
+
+/* Swipe indicators */
+.swipe-indicator {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.dark .swipe-indicator {
+  background-color: rgba(255, 255, 255, 0.2);
+}

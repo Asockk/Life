@@ -17,6 +17,11 @@ import FixedModernEntryForm from './components/Forms/FixedModernEntryForm';
 import StatusMessage from './components/UI/StatusMessage';
 import OfflineIndicator from './components/UI/OfflineIndicator';
 
+// Mobile optimized components
+import QuickEntryWidget from './components/Forms/QuickEntryWidget';
+import BottomSheet from './components/UI/BottomSheet';
+import MobileTouchChart from './components/Charts/MobileTouchChart';
+
 // Error Boundary
 import { CriticalErrorBoundary } from './components/ErrorBoundary';
 
@@ -74,6 +79,16 @@ const UltraModernBlutdruckTracker = () => {
     }
   }, [darkMode]);
 
+  // Handle window resize for mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Data Hook
   const {
     data,
@@ -102,6 +117,7 @@ const UltraModernBlutdruckTracker = () => {
   const [currentEntry, setCurrentEntry] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   
   // Swipe state
   const [touchStart, setTouchStart] = useState(null);
@@ -134,6 +150,19 @@ const UltraModernBlutdruckTracker = () => {
       setCurrentEntry(null);
     }
     return result;
+  };
+
+  // Quick Entry Handler
+  const handleQuickEntry = async (quickData) => {
+    const now = new Date();
+    const formData = {
+      tag: now.toLocaleDateString('de-DE', { weekday: 'short' }),
+      datum: now.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' }),
+      ...quickData
+    };
+    
+    const result = addEntry(formData, {});
+    return result.success;
   };
 
   // Touch handlers for swipe gestures
@@ -306,14 +335,23 @@ const UltraModernBlutdruckTracker = () => {
               darkMode={darkMode}
             />
             
-            {/* Ultra Modern Chart */}
+            {/* Ultra Modern Chart - Mobile optimized for touch devices */}
             <CriticalErrorBoundary componentName="UltraModernChart">
-              <UltraModernChart 
-                data={dataWithMA} 
-                viewType={viewType} 
-                avgValues={avgValues}
-                darkMode={darkMode}
-              />
+              {isMobile ? (
+                <MobileTouchChart 
+                  data={dataWithMA} 
+                  darkMode={darkMode}
+                  height={300}
+                  title={viewType === 'all' ? 'Alle Messungen' : viewType === 'morgen' ? 'Morgenwerte' : 'Abendwerte'}
+                />
+              ) : (
+                <UltraModernChart 
+                  data={dataWithMA} 
+                  viewType={viewType} 
+                  avgValues={avgValues}
+                  darkMode={darkMode}
+                />
+              )}
             </CriticalErrorBoundary>
           </div>
         );
@@ -398,6 +436,20 @@ const UltraModernBlutdruckTracker = () => {
               darkMode={darkMode}
             />
           </Suspense>
+        )}
+
+        {/* Quick Entry Widget - Mobile Only */}
+        {isMobile && activeTab === 'home' && !showAddForm && !showEditForm && (
+          <QuickEntryWidget
+            onSave={handleQuickEntry}
+            lastMeasurement={data.length > 0 ? {
+              sys: data[0].morgenSys || data[0].abendSys,
+              dia: data[0].morgenDia || data[0].abendDia,
+              pulse: data[0].morgenPuls || data[0].abendPuls
+            } : null}
+            darkMode={darkMode}
+            isMobile={isMobile}
+          />
         )}
         
         {/* Medical Report */}

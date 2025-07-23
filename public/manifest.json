@@ -1,7 +1,7 @@
 {
-  "short_name": "Blutdruck-Tracker",
-  "name": "Blutdruck-Tracker App",
-  "description": "Eine App zum Tracken und Analysieren von Blutdruckwerten mit Kontextfaktoren",
+  "short_name": "Blutdruck",
+  "name": "Blutdruck-Tracker",
+  "description": "Überwachen und analysieren Sie Ihre Blutdruckwerte einfach und präzise",
   "icons": [
     {
       "src": "favicon.ico",
@@ -12,35 +12,92 @@
       "src": "logo192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": ".",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#0074d9",
+  "theme_color": "#FF4E50",
   "background_color": "#ffffff",
   "orientation": "portrait",
   "categories": ["health", "medical", "lifestyle"],
+  "lang": "de",
+  "dir": "ltr",
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
   "screenshots": [
     {
       "src": "screenshot1.png",
       "sizes": "1280x720",
-      "type": "image/png"
+      "type": "image/png",
+      "label": "Dashboard Ansicht"
+    },
+    {
+      "src": "screenshot2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Eingabe Formular"
     }
   ],
   "related_applications": [],
   "prefer_related_applications": false,
   "shortcuts": [
     {
-      "name": "Neuer Eintrag",
+      "name": "Neue Messung",
+      "short_name": "Messung",
       "url": "/?action=new",
-      "description": "Neuen Blutdruckeintrag hinzufügen"
+      "description": "Schnell neue Blutdruckwerte eingeben",
+      "icons": [
+        {
+          "src": "add-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Statistiken",
+      "short_name": "Stats",
+      "url": "/?view=stats",
+      "description": "Ihre Blutdruck-Statistiken anzeigen",
+      "icons": [
+        {
+          "src": "stats-icon.png",
+          "sizes": "96x96"
+        }
+      ]
     }
-  ]
+  ],
+  "features": [
+    "fullscreen",
+    "camera",
+    "microphone"
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }
