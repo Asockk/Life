@@ -16,11 +16,16 @@ import ModernBottomNav from './components/Navigation/ModernBottomNav';
 import FixedModernEntryForm from './components/Forms/FixedModernEntryForm';
 import StatusMessage from './components/UI/StatusMessage';
 import OfflineIndicator from './components/UI/OfflineIndicator';
+import OfflineQueueIndicator from './components/UI/OfflineQueueIndicator';
 
 // Mobile optimized components
 import QuickEntryWidget from './components/Forms/QuickEntryWidget';
 import BottomSheet from './components/UI/BottomSheet';
 import MobileTouchChart from './components/Charts/MobileTouchChart';
+
+// Services
+import HapticFeedback from './utils/hapticFeedback';
+import offlineQueueService from './services/offlineQueueService';
 
 // Error Boundary
 import { CriticalErrorBoundary } from './components/ErrorBoundary';
@@ -88,6 +93,21 @@ const UltraModernBlutdruckTracker = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  // Offline Queue Listener
+  useEffect(() => {
+    const handleQueueUpdate = async (event) => {
+      const count = await offlineQueueService.getPendingCount();
+      setOfflineQueueCount(count);
+    };
+    
+    offlineQueueService.addListener(handleQueueUpdate);
+    handleQueueUpdate(); // Initial count
+    
+    return () => {
+      offlineQueueService.removeListener(handleQueueUpdate);
+    };
+  }, []);
 
   // Data Hook
   const {
@@ -118,6 +138,7 @@ const UltraModernBlutdruckTracker = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [showNotifications, setShowNotifications] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [offlineQueueCount, setOfflineQueueCount] = useState(0);
   
   // Swipe state
   const [touchStart, setTouchStart] = useState(null);
@@ -125,29 +146,55 @@ const UltraModernBlutdruckTracker = () => {
 
   // Event Handlers
   const handleAddNew = () => {
+    HapticFeedback.impact('medium');
     setShowAddForm(true);
     setShowEditForm(false);
   };
 
   const handleEdit = (entry) => {
+    HapticFeedback.selection();
     setCurrentEntry(entry);
     setShowEditForm(true);
     setShowAddForm(false);
   };
 
-  const handleAddSubmit = (_, formData, contextData) => {
+  const handleAddSubmit = async (_, formData, contextData) => {
     const result = addEntry(formData, contextData);
+    
+    // Bei Offline: In Queue speichern
+    if (!navigator.onLine) {
+      await offlineQueueService.addToQueue({
+        type: 'add-entry',
+        data: { formData, contextData }
+      });
+    }
+    
     if (result.success) {
+      HapticFeedback.save();
       setShowAddForm(false);
+    } else {
+      HapticFeedback.error();
     }
     return result;
   };
 
-  const handleEditSubmit = (id, formData, contextData) => {
+  const handleEditSubmit = async (id, formData, contextData) => {
     const result = updateEntry(id, formData, contextData);
+    
+    // Bei Offline: In Queue speichern
+    if (!navigator.onLine) {
+      await offlineQueueService.addToQueue({
+        type: 'update-entry',
+        data: { id, formData, contextData }
+      });
+    }
+    
     if (result.success) {
+      HapticFeedback.save();
       setShowEditForm(false);
       setCurrentEntry(null);
+    } else {
+      HapticFeedback.error();
     }
     return result;
   };
@@ -186,8 +233,10 @@ const UltraModernBlutdruckTracker = () => {
     if (!swipeDirection) return;
     
     if (swipeDirection === 'left' && viewType === 'morgen') {
+      HapticFeedback.swipe();
       setViewType('abend');
     } else if (swipeDirection === 'right' && viewType === 'abend') {
+      HapticFeedback.swipe();
       setViewType('morgen');
     }
     
@@ -301,7 +350,10 @@ const UltraModernBlutdruckTracker = () => {
             <div className="flex justify-center mb-6">
               <div className="glass-card p-1 rounded-full inline-flex">
                 <button
-                  onClick={() => setViewType('morgen')}
+                  onClick={() => {
+                    HapticFeedback.selection();
+                    setViewType('morgen');
+                  }}
                   className={`
                     px-6 py-2 rounded-full font-medium transition-all duration-300
                     ${viewType === 'morgen' 
@@ -313,7 +365,10 @@ const UltraModernBlutdruckTracker = () => {
                   Morgen
                 </button>
                 <button
-                  onClick={() => setViewType('abend')}
+                  onClick={() => {
+                    HapticFeedback.selection();
+                    setViewType('abend');
+                  }}
                   className={`
                     px-6 py-2 rounded-full font-medium transition-all duration-300
                     ${viewType === 'abend' 
@@ -392,6 +447,9 @@ const UltraModernBlutdruckTracker = () => {
           {/* Offline Indicator */}
           <OfflineIndicator darkMode={darkMode} />
           
+          {/* Offline Queue Indicator */}
+          <OfflineQueueIndicator darkMode={darkMode} />
+          
           {/* Tab Content */}
           {renderTabContent()}
         </div>
@@ -449,6 +507,7 @@ const UltraModernBlutdruckTracker = () => {
             } : null}
             darkMode={darkMode}
             isMobile={isMobile}
+            historicalData={data}
           />
         )}
         

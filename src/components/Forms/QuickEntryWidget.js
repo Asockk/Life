@@ -1,9 +1,11 @@
 // components/Forms/QuickEntryWidget.js
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Check, X, Activity, Heart, Clock } from 'lucide-react';
+import { Plus, Check, X, Activity, Heart, Clock, Sparkles } from 'lucide-react';
 import { getBloodPressureCategory } from '../../utils/bloodPressureUtils';
+import HapticFeedback from '../../utils/hapticFeedback';
+import predictionService from '../../services/predictionService';
 
-const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false }) => {
+const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false, historicalData = [] }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [values, setValues] = useState({
     sys: '',
@@ -13,10 +15,21 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
   });
   const [activeField, setActiveField] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [prediction, setPrediction] = useState(null);
+  const [showPrediction, setShowPrediction] = useState(false);
   
   const sysRef = useRef(null);
   const diaRef = useRef(null);
   const pulseRef = useRef(null);
+  
+  // Predictions aktualisieren wenn sich der Typ ändert
+  useEffect(() => {
+    if (historicalData.length > 0) {
+      predictionService.analyzePatterns(historicalData);
+      const pred = predictionService.getPrediction(values.type);
+      setPrediction(pred);
+    }
+  }, [values.type, historicalData]);
 
   // Automatisch nächstes Feld fokussieren
   const handleValueChange = (field, value) => {
@@ -24,9 +37,11 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
     if (value && !/^\d+$/.test(value)) return;
     
     setValues(prev => ({ ...prev, [field]: value }));
+    HapticFeedback.selection();
     
     // Auto-advance to next field
     if (value.length >= 3) {
+      HapticFeedback.impact('light');
       if (field === 'sys' && diaRef.current) {
         diaRef.current.focus();
       } else if (field === 'dia' && pulseRef.current) {
@@ -47,18 +62,22 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
     const success = await onSave(measurement);
     
     if (success) {
+      HapticFeedback.save();
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         setIsExpanded(false);
         setValues({ sys: '', dia: '', pulse: '', type: 'morgen' });
       }, 1500);
+    } else {
+      HapticFeedback.error();
     }
   };
 
   const handleNumPadClick = (number) => {
     if (!activeField) return;
     
+    HapticFeedback.buttonPress();
     const currentValue = values[activeField] || '';
     if (currentValue.length < 3) {
       handleValueChange(activeField, currentValue + number);
@@ -67,6 +86,7 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
 
   const handleBackspace = () => {
     if (!activeField) return;
+    HapticFeedback.buttonPress();
     const currentValue = values[activeField] || '';
     handleValueChange(activeField, currentValue.slice(0, -1));
   };
@@ -75,11 +95,26 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
   const category = values.sys && values.dia 
     ? getBloodPressureCategory(parseInt(values.sys), parseInt(values.dia))
     : null;
+    
+  // Prediction anwenden
+  const applyPrediction = () => {
+    if (!prediction) return;
+    
+    HapticFeedback.impact('medium');
+    setValues(prev => ({
+      ...prev,
+      sys: prediction.sys.toString(),
+      dia: prediction.dia.toString(),
+      pulse: prediction.pulse ? prediction.pulse.toString() : ''
+    }));
+    setShowPrediction(false);
+  };
 
   if (!isExpanded) {
     return (
       <button
         onClick={() => {
+          HapticFeedback.impact('medium');
           setIsExpanded(true);
           setTimeout(() => sysRef.current?.focus(), 100);
         }}
@@ -116,7 +151,10 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
         </h3>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setValues(prev => ({ ...prev, type: prev.type === 'morgen' ? 'abend' : 'morgen' }))}
+            onClick={() => {
+              HapticFeedback.selection();
+              setValues(prev => ({ ...prev, type: prev.type === 'morgen' ? 'abend' : 'morgen' }));
+            }}
             className={`
               px-3 py-1 rounded-full text-sm font-medium
               ${values.type === 'morgen' 
@@ -128,7 +166,10 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
             {values.type === 'morgen' ? '🌅 Morgen' : '🌙 Abend'}
           </button>
           <button
-            onClick={() => setIsExpanded(false)}
+            onClick={() => {
+              HapticFeedback.selection();
+              setIsExpanded(false);
+            }}
             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <X size={20} className={darkMode ? 'text-gray-400' : 'text-gray-600'} />
@@ -138,12 +179,42 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
 
       {/* Value Display */}
       <div className="p-4">
+        {/* Prediction Banner */}
+        {prediction && showPrediction && (
+          <div 
+            onClick={applyPrediction}
+            className={`
+              mb-3 p-3 rounded-lg flex items-center justify-between cursor-pointer
+              transition-all duration-200 transform hover:scale-102
+              ${darkMode 
+                ? 'bg-gradient-to-r from-blue-900/50 to-purple-900/50 border border-blue-700' 
+                : 'bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200'
+              }
+            `}
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-blue-500" />
+              <span className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                Vorschlag: {prediction.sys}/{prediction.dia} 
+                {prediction.pulse && ` - ${prediction.pulse} bpm`}
+              </span>
+            </div>
+            <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              {prediction.reason}
+            </span>
+          </div>
+        )}
+        
         <div className="grid grid-cols-3 gap-3 mb-4">
           {/* Systolisch */}
           <div 
             onClick={() => {
+              HapticFeedback.selection();
               setActiveField('sys');
               sysRef.current?.focus();
+              if (prediction && values.sys === '') {
+                setShowPrediction(true);
+              }
             }}
             className={`
               relative rounded-xl p-3 text-center cursor-pointer
@@ -178,6 +249,7 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
           {/* Diastolisch */}
           <div 
             onClick={() => {
+              HapticFeedback.selection();
               setActiveField('dia');
               diaRef.current?.focus();
             }}
@@ -214,6 +286,7 @@ const QuickEntryWidget = ({ onSave, lastMeasurement, darkMode, isMobile = false 
           {/* Puls */}
           <div 
             onClick={() => {
+              HapticFeedback.selection();
               setActiveField('pulse');
               pulseRef.current?.focus();
             }}

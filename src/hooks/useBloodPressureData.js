@@ -17,6 +17,10 @@ import {
 } from '../services/storageService';
 import syncService from '../services/syncService';
 
+// Neue Services importieren
+import offlineQueueService from '../services/offlineQueueService';
+import predictionService from '../services/predictionService';
+
 // Debounce-Funktion für verzögertes Speichern
 function debounce(func, wait) {
   let timeout;
@@ -63,6 +67,9 @@ const useBloodPressureData = () => {
   // State für den angezeigten Bericht
   const [showReport, setShowReport] = useState(false);
   
+  // State für Predictions
+  const [predictions, setPredictions] = useState({});
+  
   // Cleanup für Timeouts
   const timeoutRefs = useRef([]);
   
@@ -98,6 +105,18 @@ const useBloodPressureData = () => {
         
         // Einstellungen laden (z.B. viewType)
         const savedViewType = await loadSetting('viewType', 'morgen');
+        
+        // Prediction Service initialisieren mit historischen Daten
+        if (mounted && storedData && storedData.length > 0) {
+          predictionService.analyzePatterns(storedData);
+        }
+        
+        // Offline Queue Status prüfen
+        const pendingCount = await offlineQueueService.getPendingCount();
+        if (pendingCount > 0) {
+          console.log(`${pendingCount} ausstehende Offline-Operationen gefunden`);
+          offlineQueueService.processPendingOperations();
+        }
         if (mounted) {
           setViewType(savedViewType);
         }
