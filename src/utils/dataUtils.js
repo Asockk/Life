@@ -650,36 +650,41 @@ function translateDayToShortGerman(day) {
   
   const lowercaseDay = day.toLowerCase().trim();
   
-  // Englische und deutsche Wochentage
-  const dayMap = {
-    'monday': 'Mo', 'montag': 'Mo',
-    'tuesday': 'Di', 'dienstag': 'Di',
-    'wednesday': 'Mi', 'mittwoch': 'Mi',
-    'thursday': 'Do', 'donnerstag': 'Do',
-    'friday': 'Fr', 'freitag': 'Fr',
-    'saturday': 'Sa', 'samstag': 'Sa',
-    'sunday': 'So', 'sonntag': 'So'
-  };
-  
-  // Direkter Match mit dem dayMap
-  for (const [key, value] of Object.entries(dayMap)) {
-    if (lowercaseDay.includes(key)) return value;
-  }
-  
   // Wenn bereits deutsche Kurzform, behalten wir diese bei
   if (['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so'].includes(lowercaseDay)) {
     return day.charAt(0).toUpperCase() + day.charAt(1).toLowerCase();
   }
   
-  // Fallback: Die ersten 2 Zeichen oder feste Zuordnung basierend auf typischen Zahlen
-  if (lowercaseDay === '1' || lowercaseDay === '01') return 'Mo';
-  if (lowercaseDay === '2' || lowercaseDay === '02') return 'Di';
-  if (lowercaseDay === '3' || lowercaseDay === '03') return 'Mi';
-  if (lowercaseDay === '4' || lowercaseDay === '04') return 'Do';
-  if (lowercaseDay === '5' || lowercaseDay === '05') return 'Fr';
-  if (lowercaseDay === '6' || lowercaseDay === '06') return 'Sa';
-  if (lowercaseDay === '7' || lowercaseDay === '07' || lowercaseDay === '0') return 'So';
+  // Englische und deutsche Wochentage - WICHTIG: Längere zuerst für korrektes Matching!
+  const dayMap = {
+    // Deutsche Wochentage (vollständig)
+    'montag': 'Mo',
+    'dienstag': 'Di', 
+    'mittwoch': 'Mi',
+    'donnerstag': 'Do',
+    'freitag': 'Fr',
+    'samstag': 'Sa',
+    'sonntag': 'So',
+    // Englische Wochentage
+    'monday': 'Mo',
+    'tuesday': 'Di',
+    'wednesday': 'Mi',
+    'thursday': 'Do',
+    'friday': 'Fr',
+    'saturday': 'Sa',
+    'sunday': 'So'
+  };
   
-  // Letzte Möglichkeit: Die ersten 2 Zeichen oder "Mo" als Default
-  return day.length >= 2 ? day.slice(0, 2) : 'Mo';
+  // Exakter Match statt includes() um Probleme wie "do" in "donnerstag" zu vermeiden
+  if (dayMap[lowercaseDay]) {
+    return dayMap[lowercaseDay];
+  }
+  
+  // Fallback: Die ersten 2 Zeichen mit Großschreibung
+  if (day.length >= 2) {
+    return day.charAt(0).toUpperCase() + day.charAt(1).toLowerCase();
+  }
+  
+  // Letzter Fallback
+  return 'Mo';
 }

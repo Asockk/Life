@@ -24,7 +24,9 @@
       "Bash(npm info:*)",
       "Bash(npm audit:*)",
       "Bash(npx gh-pages:*)",
-      "Bash(npx kill-port:*)"
+      "Bash(npx kill-port:*)",
+      "Bash(open convert-csv-import.html)",
+      "Bash(node:*)"
     ]
   },
   "enableAllProjectMcpServers": false
